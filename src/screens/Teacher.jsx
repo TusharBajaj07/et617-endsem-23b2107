@@ -139,8 +139,8 @@ export default function Teacher({ t }) {
 
               {r.kind === 'disagreement' ? (
                 <>
-                  <p className="view jaanch">🧐 {t(r.jaanch)}</p>
-                  <p className="view sawaal">🤔 {t(r.sawaal)}</p>
+                  <p className="view jaanch">🔍 {t(r.jaanch)}</p>
+                  <p className="view sawaal">❓ {t(r.sawaal)}</p>
                   <p>
                     {t({ hi: 'बच्चे का फ़ैसला:', en: "Learner's choice:" })} <strong>{t(choiceLabel[r.learnerChoice])}</strong>
                     {r.testResult && ` (${r.testResult === 'pass' ? t({ hi: 'जाँच सही, −7', en: 'check passed, −7' }) : t({ hi: 'जाँच गलत: "दो माइनस = प्लस" पक्का दिखा', en: 'check failed: "two minuses = plus" confirmed' })})`}
@@ -150,7 +150,7 @@ export default function Teacher({ t }) {
                 <>
                   <p className="quote">“{r.learnerText}”</p>
                   <p className="view jaanch">
-                    🧐 {t({ hi: 'जाँच', en: 'Jaanch' })} ({r.source === 'ai' ? 'AI' : t({ hi: 'नियम', en: 'rule-based' })}) · {r.score}/3: {t(r.ai)}
+                    🔍 {t({ hi: 'जाँच', en: 'Jaanch' })} ({r.source === 'ai' ? 'AI' : t({ hi: 'नियम', en: 'rule-based' })}) · {r.score}/3: {t(r.ai)}
                   </p>
                 </>
               )}
@@ -178,10 +178,10 @@ export default function Teacher({ t }) {
                   {r.kind === 'disagreement' ? (
                     <>
                       <button className="ghost" onClick={() => decide(r, 'jaanch', D.teacherJ)}>
-                        🧐 {t({ hi: 'जाँच सही', en: 'Jaanch is right' })}
+                        🔍 {t({ hi: 'जाँच सही', en: 'Jaanch is right' })}
                       </button>
                       <button className="ghost" onClick={() => decide(r, 'sawaal', D.teacherS)}>
-                        🤔 {t({ hi: 'सवाल सही', en: 'Sawaal is right' })}
+                        ❓ {t({ hi: 'सवाल सही', en: 'Sawaal is right' })}
                       </button>
                     </>
                   ) : (

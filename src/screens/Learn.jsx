@@ -51,7 +51,7 @@ export default function Learn({ t, session, updateSession, go }) {
             <div className={'bubble ' + (tap === card.check.target ? 'jaanch' : 'samjhao')}>
               {tap === card.check.target
                 ? t({ hi: '✅ सही! −3 यानी 0 से 3 कदम बाईं ओर।', en: '✅ Right! −3 is 3 steps left of 0.' })
-                : t({ hi: `😊 तुमने ${fmt(tap)} चुना। −3 शून्य के बाईं ओर है: 0 से 3 कदम बाईं ओर गिनो।`, en: `😊 You chose ${fmt(tap)}. −3 is left of zero: count 3 steps left from 0.` })}
+                : t({ hi: `🧭 तुमने ${fmt(tap)} चुना। −3 शून्य के बाईं ओर है: 0 से 3 कदम बाईं ओर गिनो।`, en: `🧭 You chose ${fmt(tap)}. −3 is left of zero: count 3 steps left from 0.` })}
             </div>
           )}
         </>

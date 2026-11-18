@@ -261,10 +261,10 @@ export default function Practice({ t, session, updateSession, go, learner }) {
           <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={200} placeholder={t({ hi: 'कुछ पूछना है? यहाँ लिखो…', en: 'Want to ask something? Type here…' })} aria-label="question for agents" />
           <div className="actions">
             <button className="ghost" disabled={!question.trim()} onClick={() => ask('samjhao')}>
-              😊 {t({ hi: 'समझाओ से पूछो', en: 'Ask Samjhao' })}
+              🧭 {t({ hi: 'समझाओ से पूछो', en: 'Ask Samjhao' })}
             </button>
             <button className="ghost" disabled={!question.trim()} onClick={() => ask('sawaal')}>
-              🤔 {t({ hi: 'सवाल से पूछो', en: 'Ask Sawaal' })}
+              ❓ {t({ hi: 'सवाल से पूछो', en: 'Ask Sawaal' })}
             </button>
           </div>
         </div>
