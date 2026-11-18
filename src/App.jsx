@@ -19,7 +19,10 @@ export default function App() {
 
   const t = (o) => (o && typeof o === 'object' ? (o[lang] ?? o.hi) : o)
 
-  useEffect(() => store.write('gc_lang', lang), [lang])
+  useEffect(() => {
+    store.write('gc_lang', lang)
+    document.documentElement.lang = lang
+  }, [lang])
   useEffect(() => {
     store.logEvent('page_view', { target: screen })
     window.scrollTo(0, 0)
