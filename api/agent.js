@@ -27,7 +27,7 @@ async function callGroq(model, key, system, user, ms, effort = 'low') {
         response_format: { type: 'json_object' },
         reasoning_effort: effort,
         temperature: 0.4,
-        max_completion_tokens: 600,
+        max_completion_tokens: 1500, // reasoning tokens count toward this cap; 600 left no room for the answer
       }),
     })
     if (!r.ok) return { error: `HTTP ${r.status}` }
@@ -59,7 +59,8 @@ If the learner's last message REPLIES to a question another agent asked, first c
 When the learner's answer is wrong, NEVER use the words right / correct / सही / ठीक to agree with another agent (a child reads "Jaanch is right" as "my answer is right"). Build on them with "जैसा जाँच ने बताया… / As Jaanch said…" instead.
 Speak as yourself in the first person; never mention your own name. Never mention "the checker" or "the check"; just state things directly.
 While the learner has not yet answered correctly: never write the final answer, never compute it in words (e.g. "3 more than 5"), and never rewrite the question into an easier sum (e.g. "5 + 3"). Point only at the DIRECTION (left/right) or the udhaar idea and let the learner finish.
-If "learner_question" is present, the learner asked YOU directly and wants a fuller explanation: explain step by step in 3 to 5 short lines, each on a new line ("\n"), walking through THEIR numbers on the number line (start here, which direction, count each step) and/or an udhaar story with real rupees. Samjhao: the step-by-step explanation. Sawaal: the steps plus one guiding question at the end. Never give the final answer of the current question while the learner is still trying.
+If "learner_question" is present, the learner asked YOU directly and wants a fuller explanation: explain step by step in 3 to 5 short lines, each on a new line ("\n"), walking through THEIR numbers on the number line (start here, which direction, count each step) and/or an udhaar story with real rupees. While the learner has not answered correctly yet, STOP one step before the end: count the first steps (e.g. "−5, −6, …") and ask where they land; never write the final number.
+If the learner says they do not understand another agent's message, restate that agent's question in simpler words first (e.g. "Sawaal is asking: why do we go LEFT when we add a minus number?"), then help them answer it. Samjhao: the step-by-step explanation. Sawaal: the steps plus one guiding question at the end. Never give the final answer of the current question while the learner is still trying.
 Return ONLY JSON: {"hi": "<Hindi>", "en": "<English>", "stance": "agree" | "disagree"}  (stance = do you agree with the previous agent's message; "agree" if there is none)`
 
 const ROLES = {
@@ -124,9 +125,9 @@ export default async function handler(req, res) {
     const left = deadline - Date.now()
     if (!key || left < 1500) continue
     const call = provider === 'groq' ? callGroq : callGemini
-    // A learner's own question gets more reasoning (accuracy over speed); automatic feedback stays fast.
+    // Low reasoning keeps replies at ~1-2 s; medium reasoning ran out of tokens and fell through to Gemini.
     const asked = !!ctx.learnerQuestion
-    const out = await call(model, key, system, user, Math.min(left, provider === 'groq' ? (asked ? 9000 : 4000) : 9000), asked ? 'medium' : 'low')
+    const out = await call(model, key, system, user, Math.min(left, provider === 'groq' ? (asked ? 6000 : 4000) : 9000), 'low')
     const d = out.data
     if (d && typeof d.hi === 'string' && typeof d.en === 'string' && /[ऀ-ॿ]/.test(d.hi)) {
       const score = ctx.agent === 'jaanch_rubric' ? Math.max(0, Math.min(3, parseInt(d.score, 10) || 0)) : undefined
