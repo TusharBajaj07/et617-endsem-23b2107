@@ -57,7 +57,7 @@ the misconception when it appears, and lets the teacher see and correct the AI's
 | Field | Kavita |
 |---|---|
 | **Name, age, class** | Kavita, 12, Class 7, Government Middle School in a village in Vidisha district, Madhya Pradesh *(location assumed)* |
-| **Context and support** | Parents farm soybean and wheat. Her father studied up to Class 8, her mother up to Class 5 *(assumption)*, so they can't explain negative numbers. No tuition in the village. One maths teacher (Meena Ma'am) teaches Classes 6–8, about 90 students. |
+| **Context and support** | Parents farm soybean and wheat. Her father studied up to Class 5, her mother up to Class 2 *(assumption)*, so they can't explain negative numbers. No tuition in the village. One maths teacher (Meena Ma'am) teaches Classes 6–8, about 90 students. |
 | **Device** | Father's Android phone, about ₹7,000, 6.5″ screen, 2–3 GB RAM, Chrome. Shared daily prepaid data; the signal drops indoors in the evening. |
 | **Time** | About 30 minutes, roughly 7:30–8:00 pm, after her father returns. Often cut short when he needs the phone. |
 | **Language** | Hindi at home and at school (Hindi-medium). Reads Devanagari comfortably and knows the textbook terms *ऋणात्मक* (negative), *धनात्मक* (positive), *संख्या रेखा* (number line). Writes digits and + − = as in the textbook. Reads only a little English. |

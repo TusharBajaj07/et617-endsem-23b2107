@@ -1,0 +1,265 @@
+import { useState } from 'react'
+import { DISAGREE as D } from '../content'
+import { mastery } from '../agents'
+import * as store from '../store'
+
+const PIN = '0617'
+
+function download(name, text, type) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([text], { type }))
+  a.download = name
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+// S6 (C5 teacher-in-the-loop): class progress, approve/override AI feedback, clickstream analytics.
+export default function Teacher({ t }) {
+  const [ok, setOk] = useState(false)
+  const [pin, setPin] = useState('')
+  const [tab, setTab] = useState('queue')
+  const [, refresh] = useState(0)
+  const [editing, setEditing] = useState(null)
+  const [draft, setDraft] = useState('')
+
+  if (!ok) {
+    return (
+      <section className="sheet">
+        <h1 className="sign">{t({ hi: 'शिक्षक', en: 'Teacher' })}</h1>
+        <form
+          className="stack"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (pin === PIN) {
+              setOk(true)
+              store.logEvent('teacher_login')
+            }
+          }}
+        >
+          <label htmlFor="pin">{t({ hi: 'शिक्षक PIN डालो (डेमो: 0617)', en: 'Enter teacher PIN (demo: 0617)' })}</label>
+          <input id="pin" className="num" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)} maxLength={4} />
+          {pin.length === 4 && pin !== PIN && <p className="err">{t({ hi: 'PIN गलत है। डेमो PIN 0617 है।', en: 'Wrong PIN. The demo PIN is 0617.' })}</p>}
+          <button className="primary">{t({ hi: 'खोलो', en: 'Open' })}</button>
+        </form>
+      </section>
+    )
+  }
+
+  const reviews = store.getReviews().sort((a, b) => (a.status === 'pending') - (b.status === 'pending') || 0).reverse()
+  const learners = store.getLearners()
+  const events = store.getEvents()
+
+  function decide(r, decision, message) {
+    store.updateReview(r.id, { status: decision === 'override' ? 'overridden' : 'approved', decision, message })
+    store.logEvent('teacher_review', { target: r.taskId, value: decision, meta: { review: r.id, learner: r.learnerId, kind: r.kind } })
+    setEditing(null)
+    setDraft('')
+    refresh((n) => n + 1)
+  }
+
+  const choiceLabel = { test: { hi: 'परखा', en: 'Tested' }, continue: { hi: 'अपना कारण रखा', en: 'Kept own reason' }, ask: { hi: 'टीचर से पूछा', en: 'Asked teacher' } }
+  const statusLabel = { pending: { hi: 'बाकी', en: 'Pending' }, approved: { hi: 'मंज़ूर', en: 'Approved' }, overridden: { hi: 'बदला', en: 'Overridden' }, 'auto-resolved': { hi: 'खुद सुलझा', en: 'Self-resolved' } }
+
+  // analytics
+  const answers = events.filter((e) => e.event_type === 'answer_submitted')
+  const byLO = ['LO1', 'LO2', 'LO3'].map((lo) => {
+    const a = answers.filter((e) => e.objective_id === lo)
+    const c = a.filter((e) => e.correct === true).length
+    return { lo, n: a.length, pct: a.length ? Math.round((100 * c) / a.length) : null }
+  })
+  const agentMsgs = events.filter((e) => e.event_type === 'agent_message')
+  const aiShare = agentMsgs.length ? Math.round((100 * agentMsgs.filter((e) => e.meta?.source === 'ai').length) / agentMsgs.length) : null
+  const counts = events.reduce((m, e) => ((m[e.event_type] = (m[e.event_type] || 0) + 1), m), {})
+
+  return (
+    <section className="sheet">
+      <h1 className="sign">{t({ hi: 'शिक्षक की चौपाल', en: "Teacher's chaupal" })}</h1>
+      <div className="tabs">
+        {[
+          ['queue', { hi: `जाँच की कतार (${reviews.filter((r) => r.status === 'pending').length})`, en: `Review queue (${reviews.filter((r) => r.status === 'pending').length})` }],
+          ['class', { hi: 'कक्षा', en: 'Class' }],
+          ['data', { hi: 'डेटा', en: 'Data' }],
+        ].map(([k, l]) => (
+          <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
+            {t(l)}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'queue' && (
+        <div className="stack">
+          {reviews.length === 0 && <p className="muted">{t({ hi: 'अभी जाँचने को कुछ नहीं। जब कोई बच्चा दो राय वाला फ़ैसला करेगा या अपने शब्दों में लिखेगा, वह यहाँ आएगा।', en: 'Nothing to review yet. Items appear here when a learner decides in a two-views moment or writes an explanation.' })}</p>}
+          {reviews.map((r) => (
+            <article key={r.id} className={'review ' + r.status}>
+              <header>
+                <strong>{r.learnerName}</strong>
+                <span>
+                  {r.taskId} {r.kind === 'disagreement' ? t({ hi: 'दो राय', en: 'Two views' }) : t({ hi: 'अपने शब्दों में', en: 'Own words' })}
+                </span>
+                <em>{t(statusLabel[r.status])}</em>
+              </header>
+
+              {r.kind === 'disagreement' ? (
+                <>
+                  <p className="view jaanch">✅ {t(r.jaanch)}</p>
+                  <p className="view sawaal">❓ {t(r.sawaal)}</p>
+                  <p>
+                    {t({ hi: 'बच्चे का फ़ैसला:', en: "Learner's choice:" })} <strong>{t(choiceLabel[r.learnerChoice])}</strong>
+                    {r.testResult && ` (${r.testResult === 'pass' ? t({ hi: 'जाँच सही, −7', en: 'check passed, −7' }) : t({ hi: 'जाँच गलत: "दो माइनस = प्लस" पक्का दिखा', en: 'check failed: "two minuses = plus" confirmed' })})`}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="quote">“{r.learnerText}”</p>
+                  <p className="view jaanch">
+                    ✅ {t({ hi: 'जाँच', en: 'Jaanch' })} ({r.source === 'ai' ? 'AI' : t({ hi: 'नियम', en: 'rule-based' })}) · {r.score}/3: {t(r.ai)}
+                  </p>
+                </>
+              )}
+
+              {r.message && (
+                <p className="sent">
+                  👩‍🏫 {t({ hi: 'भेजा गया:', en: 'Sent:' })} {t(r.message)}
+                </p>
+              )}
+
+              {editing === r.id ? (
+                <div className="stack">
+                  <textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t({ hi: 'बच्चे के लिए अपना संदेश लिखो', en: 'Write your own message to the learner' })} />
+                  <div className="actions">
+                    <button className="ghost" onClick={() => setEditing(null)}>
+                      {t({ hi: 'रद्द करो', en: 'Cancel' })}
+                    </button>
+                    <button className="primary" disabled={!draft.trim()} onClick={() => decide(r, 'override', { hi: draft.trim(), en: draft.trim() })}>
+                      {t({ hi: 'संदेश भेजो', en: 'Send message' })}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="choices row-wrap">
+                  {r.kind === 'disagreement' ? (
+                    <>
+                      <button className="ghost" onClick={() => decide(r, 'jaanch', D.teacherJ)}>
+                        ✅ {t({ hi: 'जाँच सही', en: 'Jaanch is right' })}
+                      </button>
+                      <button className="ghost" onClick={() => decide(r, 'sawaal', D.teacherS)}>
+                        ❓ {t({ hi: 'सवाल सही', en: 'Sawaal is right' })}
+                      </button>
+                    </>
+                  ) : (
+                    <button className="ghost" onClick={() => decide(r, 'approve-ai', r.ai)}>
+                      👍 {t({ hi: 'AI की राय मंज़ूर', en: "Approve AI's feedback" })}
+                    </button>
+                  )}
+                  <button
+                    className="ghost"
+                    onClick={() => {
+                      setEditing(r.id)
+                      setDraft('')
+                    }}
+                  >
+                    ✍️ {t({ hi: 'बदलो, अपना लिखो', en: 'Override, write my own' })}
+                  </button>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {tab === 'class' && (
+        <div className="scroll-x">
+          <table className="grid">
+            <thead>
+              <tr>
+                <th>{t({ hi: 'नाम', en: 'Name' })}</th>
+                <th>LO1</th>
+                <th>LO2</th>
+                <th>LO3</th>
+                <th>M1</th>
+                <th>M2</th>
+              </tr>
+            </thead>
+            <tbody>
+              {learners.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="muted">
+                    {t({ hi: 'अभी कोई बच्चा नहीं।', en: 'No learners yet.' })}
+                  </td>
+                </tr>
+              )}
+              {learners.map((l) => {
+                const m = mastery(store.loadSession(l.id)?.progress)
+                return (
+                  <tr key={l.id}>
+                    <td>{l.name}</td>
+                    <td>{m.lo1}/4</td>
+                    <td>{m.lo2 === 'yes' ? '✓' : m.lo2 === 'partial' ? '½' : m.lo2 === 'no' ? '✗' : '–'}</td>
+                    <td>{m.lo3 === 'yes' ? '✓' : m.lo3 === 'no' ? '✗' : '–'}</td>
+                    <td className={m.M1 ? 'warn' : ''}>{m.M1}</td>
+                    <td className={m.M2 ? 'warn' : ''}>{m.M2}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          <p className="muted small">
+            {t({ hi: 'M1 = "घटाने से हमेशा छोटा", M2 = "दो माइनस = प्लस, हर जगह" (कितनी बार दिखा)', en: 'M1 = "subtracting always makes it smaller", M2 = "two minuses = plus, everywhere" (times seen)' })}
+          </p>
+        </div>
+      )}
+
+      {tab === 'data' && (
+        <div className="stack">
+          <table className="ledger">
+            <tbody>
+              {byLO.map((r) => (
+                <tr key={r.lo}>
+                  <td>
+                    {r.lo} {t({ hi: 'सही जवाब', en: 'correct answers' })}
+                  </td>
+                  <td>{r.pct == null ? '–' : `${r.pct}% (${r.n})`}</td>
+                </tr>
+              ))}
+              <tr>
+                <td>{t({ hi: 'संकेत माँगे', en: 'Hints requested' })}</td>
+                <td>{counts.hint_requested || 0}</td>
+              </tr>
+              <tr>
+                <td>{t({ hi: 'एजेंट संदेश जो AI से आए', en: 'Agent messages from AI' })}</td>
+                <td>{aiShare == null ? '–' : `${aiShare}% (${agentMsgs.length})`}</td>
+              </tr>
+              <tr>
+                <td>{t({ hi: 'दो राय वाले पल', en: 'Two-views moments' })}</td>
+                <td>{counts.disagreement_shown || 0}</td>
+              </tr>
+              <tr>
+                <td>{t({ hi: 'कुल इवेंट', en: 'Total events' })}</td>
+                <td>{events.length}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div className="actions">
+            <button className="ghost" onClick={() => download('ganit-chaupal-events.csv', store.exportCSV(), 'text/csv')}>
+              {t({ hi: 'CSV डाउनलोड', en: 'Download CSV' })}
+            </button>
+            <button className="ghost" onClick={() => download('ganit-chaupal-events.json', JSON.stringify(events, null, 1), 'application/json')}>
+              {t({ hi: 'JSON डाउनलोड', en: 'Download JSON' })}
+            </button>
+          </div>
+          <h3>{t({ hi: 'हाल की गतिविधि', en: 'Recent activity' })}</h3>
+          <ol className="log">
+            {events
+              .slice(-12)
+              .reverse()
+              .map((e, i) => (
+                <li key={i}>
+                  <time>{e.ts.slice(11, 19)}</time> {e.event_type} {e.target || ''} {e.correct === true ? '✓' : e.correct === false ? '✗' : ''}
+                </li>
+              ))}
+          </ol>
+        </div>
+      )}
+    </section>
+  )
+}
