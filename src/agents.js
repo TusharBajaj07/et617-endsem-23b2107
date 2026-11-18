@@ -68,6 +68,17 @@ export function validAI(out, ctx) {
   return true
 }
 
+// A learner's own question may get a step-by-step walk that ends on the answer ("−5, −6, −7").
+// Instead of discarding the whole reply, hide the answer number ("−5, −6, ?") while the learner is still trying.
+export function redactAnswer(out, ctx) {
+  if (!out || !ctx?.learnerQuestion || ctx.verdict === 'correct' || (ctx.attempt || 0) >= 2 || ctx.task?.correct == null) return out
+  const c = String(Math.abs(ctx.task.correct))
+  if (new RegExp(`(^|\\D)${c}(?!\\d)`).test(String(ctx.task.expr || ''))) return out // number is in the question itself
+  const re = new RegExp(`(^|[^\\d])[−-]?\\s*${c}(?!\\d)`, 'g')
+  const hide = (x) => (typeof x === 'string' ? x.replace(re, '$1?') : x)
+  return { ...out, hi: hide(out.hi), en: hide(out.en) }
+}
+
 // Ask an AI agent; fall back to the scripted (teacher-approved) line on timeout, error or failed check.
 export async function aiTurn(ctx, fallback, timeoutMs = 11000) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ...fallback, source: 'scripted' }
@@ -81,7 +92,8 @@ export async function aiTurn(ctx, fallback, timeoutMs = 11000) {
       signal: ctrl.signal,
     })
     const j = await r.json()
-    if (j.ok && validAI(j, ctx)) return { hi: j.hi, en: j.en, score: j.score, stance: j.stance, source: 'ai', model: j.model }
+    const r2 = j.ok ? redactAnswer(j, ctx) : j
+    if (r2.ok && validAI(r2, ctx)) return { hi: r2.hi, en: r2.en, score: r2.score, stance: r2.stance, source: 'ai', model: r2.model }
   } catch {
     /* fall through to scripted */
   } finally {
