@@ -1,12 +1,13 @@
 // Vercel serverless function: one endpoint, three agent roles. API keys never reach the browser.
-// Fallback chain: Groq gpt-oss-120b (~1 s, key 1 then key 2) → Groq gpt-oss-20b → Gemini flash-lite (keys 1, 2). Budget ~10 s.
+// Fallback chain: Groq gpt-oss-120b (~1 s, keys 1 → 2 → 3) → Groq gpt-oss-20b → Gemini flash-lite (keys 1, 2). Budget ~10 s.
 // Quota care: low reasoning effort, small output cap, only the last 4 conversation turns are sent.
 
 export const config = { maxDuration: 30 }
 
 const CHAIN = [
   ['groq', 'openai/gpt-oss-120b', 'GROQ_API_KEY'],
-  ['groq', 'openai/gpt-oss-120b', 'GROQ_API_KEY_2'], // backup key when key 1 hits its rate/quota limit
+  ['groq', 'openai/gpt-oss-120b', 'GROQ_API_KEY_2'], // backup keys when key 1 hits its rate/quota limit
+  ['groq', 'openai/gpt-oss-120b', 'GROQ_API_KEY_3'],
   ['groq', 'openai/gpt-oss-20b', 'GROQ_API_KEY'],
   ['gemini', 'gemini-3.5-flash-lite', 'LLM_API_KEY'],
   ['gemini', 'gemini-3.5-flash-lite', 'LLM_API_KEY_2'],

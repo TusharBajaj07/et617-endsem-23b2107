@@ -68,9 +68,30 @@ export default function Teacher({ t }) {
     .getReviews()
     .sort((a, b) => (b.status === 'pending') - (a.status === 'pending') || String(b.ts).localeCompare(String(a.ts)))
   // class list: all devices (Supabase) + this phone
-  const byId = new Map(remote.learners.map((l) => [l.id, { id: l.id, name: l.name, progress: l.progress }]))
-  store.getLearners().forEach((l) => byId.set(l.id, { id: l.id, name: l.name, progress: store.loadSession(l.id)?.progress || byId.get(l.id)?.progress }))
-  const learners = [...byId.values()]
+  const byId = new Map(remote.learners.map((l) => [l.id, { id: l.id, name: l.name, progress: l.progress, lastActive: l.last_active }]))
+  store.getLearners().forEach((l) =>
+    byId.set(l.id, { id: l.id, name: l.name, progress: store.loadSession(l.id)?.progress || byId.get(l.id)?.progress, lastActive: [l.lastActive, byId.get(l.id)?.lastActive].filter(Boolean).sort().pop() }),
+  )
+  const learners = [...byId.values()].sort((a, b) => String(b.lastActive || '').localeCompare(String(a.lastActive || '')))
+  const nameOf = (id) => byId.get(id)?.name || (id === 'anon' ? t({ hi: 'कोई नहीं / टीचर', en: 'Not signed in / teacher' }) : id)
+  // Local time and date, so the teacher reads IST, not UTC.
+  const when = (ts) => {
+    if (!ts) return '–'
+    const d = new Date(ts)
+    const sameDay = d.toDateString() === new Date().toDateString()
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + (sameDay ? '' : ' · ' + d.toLocaleDateString([], { day: 'numeric', month: 'short' }))
+  }
+  const EVENT_LABEL = {
+    session_start: { hi: 'शुरू किया', en: 'started' }, session_end: { hi: 'बाहर गया', en: 'left' },
+    session_pause: { hi: 'रुका', en: 'paused' }, session_resume: { hi: 'फिर शुरू', en: 'resumed' },
+    page_view: { hi: 'स्क्रीन खोली', en: 'opened screen' }, content_viewed: { hi: 'कार्ड देखा', en: 'viewed card' },
+    item_presented: { hi: 'सवाल देखा', en: 'saw question' }, answer_submitted: { hi: 'जवाब दिया', en: 'answered' },
+    hint_requested: { hi: 'संकेत माँगा', en: 'asked for a hint' }, agent_message: { hi: 'एजेंट ने जवाब दिया', en: 'agent replied' },
+    ai_message_sent: { hi: 'एजेंट से पूछा', en: 'asked an agent' }, disagreement_shown: { hi: 'दो राय दिखी', en: 'saw two views' },
+    disagreement_choice: { hi: 'दो राय में चुना', en: 'chose in two views' }, teacher_review: { hi: 'टीचर ने फ़ैसला किया', en: 'teacher decided' },
+    teacher_login: { hi: 'टीचर लॉगिन', en: 'teacher signed in' }, prediction: { hi: 'अंदाज़ा लगाया', en: 'made a prediction' },
+    review_started: { hi: 'दोहराना शुरू', en: 'started review' }, restart: { hi: 'शुरू से', en: 'started over' },
+  }
   const events = remote.events || store.getEvents()
 
   function decide(r, decision, message) {
@@ -211,17 +232,18 @@ export default function Teacher({ t }) {
             <thead>
               <tr>
                 <th>{t({ hi: 'नाम', en: 'Name' })}</th>
-                <th>LO1</th>
-                <th>LO2</th>
-                <th>LO3</th>
+                <th title="LO1">{t({ hi: 'जोड़-घटाना', en: 'Add/sub' })}</th>
+                <th title="LO2">{t({ hi: 'कारण', en: 'Explain' })}</th>
+                <th title="LO3">{t({ hi: 'तुलना', en: 'Compare' })}</th>
                 <th>M1</th>
                 <th>M2</th>
+                <th>{t({ hi: 'आख़िरी बार', en: 'Last seen' })}</th>
               </tr>
             </thead>
             <tbody>
               {learners.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="muted">
+                  <td colSpan={7} className="muted">
                     {t({ hi: 'अभी कोई बच्चा नहीं।', en: 'No learners yet.' })}
                   </td>
                 </tr>
@@ -236,13 +258,17 @@ export default function Teacher({ t }) {
                     <td>{m.lo3 === 'yes' ? '✓' : m.lo3 === 'no' ? '✗' : '–'}</td>
                     <td className={m.M1 ? 'warn' : ''}>{m.M1}</td>
                     <td className={m.M2 ? 'warn' : ''}>{m.M2}</td>
+                    <td className="muted small">{when(l.lastActive)}</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
           <p className="muted small">
-            {t({ hi: 'M1 = "घटाने से हमेशा छोटा", M2 = "दो माइनस = प्लस, हर जगह" (कितनी बार दिखा)', en: 'M1 = "subtracting always makes it smaller", M2 = "two minuses = plus, everywhere" (times seen)' })}
+            {t({
+              hi: 'जोड़-घटाना = पहली कोशिश में सही (4 में से)। कारण/तुलना: ✓ पक्का, ½ सिर्फ़ शॉर्टकट, ✗ और अभ्यास चाहिए, – अभी नहीं किया। M1 = "घटाने से हमेशा छोटा", M2 = "दो माइनस = प्लस, हर जगह" (कितनी बार दिखा)।',
+              en: 'Add/sub = right on the first try (out of 4). Explain/Compare: ✓ secure, ½ shortcut only, ✗ needs practice, – not done yet. M1 = "subtracting always makes it smaller", M2 = "two minuses = plus, everywhere" (times seen).',
+            })}
           </p>
         </div>
       )}
@@ -292,7 +318,8 @@ export default function Teacher({ t }) {
               .reverse()
               .map((e, i) => (
                 <li key={i}>
-                  <time>{e.ts.slice(11, 19)}</time> {e.event_type} {e.target || ''} {e.correct === true ? '✓' : e.correct === false ? '✗' : ''}
+                  <time>{when(e.ts)}</time> <strong>{nameOf(e.user_id)}</strong> {EVENT_LABEL[e.event_type] ? t(EVENT_LABEL[e.event_type]) : e.event_type}{' '}
+                  {e.target || ''} {e.correct === true ? '✓' : e.correct === false ? '✗' : ''}
                 </li>
               ))}
           </ol>
