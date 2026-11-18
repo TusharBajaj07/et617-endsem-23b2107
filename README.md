@@ -28,3 +28,5 @@ Run `supabase/schema.sql` once in the Supabase SQL editor.
 
 ## License
 Content and code released under [CC BY 4.0](LICENSE).
+
+**How the AI agents are orchestrated:** [docs/AI_FLOW.md](docs/AI_FLOW.md) (flow diagrams).
