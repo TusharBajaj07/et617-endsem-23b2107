@@ -33,3 +33,6 @@ dist-ssr
 gemini_api.txt
 *_api.txt
 *.key
+
+# Local MCP config
+.mcp.json
