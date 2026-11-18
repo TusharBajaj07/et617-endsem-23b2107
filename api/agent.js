@@ -117,7 +117,7 @@ export default async function handler(req, res) {
     learner_question: ctx.learnerQuestion ? String(ctx.learnerQuestion).slice(0, 200) : undefined,
   })
 
-  const deadline = Date.now() + 10000
+  const deadline = Date.now() + (ctx.learnerQuestion ? 16000 : 10000) // a learner who asked can wait a little longer
   const errors = []
   for (const [provider, model, envName] of CHAIN) {
     const key = process.env[envName]
@@ -126,7 +126,7 @@ export default async function handler(req, res) {
     const call = provider === 'groq' ? callGroq : callGemini
     // A learner's own question gets more reasoning (accuracy over speed); automatic feedback stays fast.
     const asked = !!ctx.learnerQuestion
-    const out = await call(model, key, system, user, Math.min(left, provider === 'groq' ? (asked ? 6000 : 4000) : 9000), asked ? 'medium' : 'low')
+    const out = await call(model, key, system, user, Math.min(left, provider === 'groq' ? (asked ? 9000 : 4000) : 9000), asked ? 'medium' : 'low')
     const d = out.data
     if (d && typeof d.hi === 'string' && typeof d.en === 'string' && /[ऀ-ॿ]/.test(d.hi)) {
       const score = ctx.agent === 'jaanch_rubric' ? Math.max(0, Math.min(3, parseInt(d.score, 10) || 0)) : undefined

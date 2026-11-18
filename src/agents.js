@@ -72,7 +72,7 @@ export function validAI(out, ctx) {
 export async function aiTurn(ctx, fallback, timeoutMs = 11000) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ...fallback, source: 'scripted' }
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  const timer = setTimeout(() => ctrl.abort(), ctx?.learnerQuestion ? 18000 : timeoutMs)
   try {
     const r = await fetch('/api/agent', {
       method: 'POST',
