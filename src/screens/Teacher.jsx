@@ -21,6 +21,7 @@ export default function Teacher({ t }) {
   const [tab, setTab] = useState('queue')
   const [, refresh] = useState(0)
   const [editing, setEditing] = useState(null)
+  const [reopened, setReopened] = useState(null) // a decided card shows its decision; buttons only on 'Change decision'
   const [draft, setDraft] = useState('')
   const [remote, setRemote] = useState({ status: sync.enabled ? 'loading' : 'off', learners: [], events: null })
 
@@ -99,6 +100,7 @@ export default function Teacher({ t }) {
     sync.schedule(200)
     store.logEvent('teacher_review', { target: r.taskId, value: decision, meta: { review: r.id, learner: r.learnerId, kind: r.kind } })
     setEditing(null)
+    setReopened(null)
     setDraft('')
     refresh((n) => n + 1)
   }
@@ -158,6 +160,11 @@ export default function Teacher({ t }) {
                 <em>{t(statusLabel[r.status])}</em>
               </header>
 
+              <p className="muted small">
+                {r.kind === 'disagreement'
+                  ? t({ hi: `सवाल 5 पर दो एजेंट असहमत थे: क्या ${r.learnerName} का "दो माइनस = प्लस" वाला कारण ठीक है? तुम तय करो, तुम्हारा संदेश बच्चे को दिखेगा।`, en: `Two agents disagreed on question 5: is ${r.learnerName}'s "two minuses = plus" reason OK? You decide; your message is shown to the learner.` })
+                  : t({ hi: `AI ने ${r.learnerName} के अपने शब्दों वाले जवाब को अंक दिए। मंज़ूर करो या अपना संदेश लिखो।`, en: `The AI scored ${r.learnerName}'s own-words explanation. Approve it or write your own message.` })}
+              </p>
               {r.kind === 'disagreement' ? (
                 <>
                   <p className="view jaanch">🔍 {t(r.jaanch)}</p>
@@ -194,6 +201,10 @@ export default function Teacher({ t }) {
                     </button>
                   </div>
                 </div>
+              ) : r.status !== 'pending' && reopened !== r.id ? (
+                <button className="ask-alt" onClick={() => setReopened(r.id)}>
+                  {t({ hi: 'फ़ैसला बदलो', en: 'Change decision' })}
+                </button>
               ) : (
                 <div className="choices row-wrap">
                   {r.kind === 'disagreement' ? (
