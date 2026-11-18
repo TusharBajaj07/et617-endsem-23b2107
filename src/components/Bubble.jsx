@@ -6,6 +6,9 @@ export default function Bubble({ b, t }) {
   if (b.agent === 'you') {
     return <div className="bubble you">{b.text}</div>
   }
+  if (b.agent === 'verdict') {
+    return <div className={'verdict ' + (b.ok ? 'ok' : 'no')}>{t(b.text)}</div>
+  }
   if (b.agent === 'system') {
     return <div className="bubble system">{t(b.text)}</div>
   }

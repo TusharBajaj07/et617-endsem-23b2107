@@ -50,7 +50,7 @@ export default function Practice({ t, session, updateSession, go, learner }) {
     push({ agent, typing: true })
     const out = await aiTurn({ ...ctx, agent, scripted: fallback, conversation: convo.current, ...extra }, fallback)
     const prev = convo.current[convo.current.length - 1]
-    const disagrees = out.source === 'ai' && out.stance === 'disagree' && prev && prev.agent !== 'learner'
+    const disagrees = out.source === 'ai' && out.stance === 'disagree' && prev && !['learner', 'checker'].includes(prev.agent)
     replaceLast({
       agent, text: { hi: out.hi, en: out.en },
       note: disagrees ? { hi: `🤝 ${prev.name.hi} से अलग राय`, en: `🤝 Disagrees with ${prev.name.en}` } : null,
@@ -62,7 +62,7 @@ export default function Practice({ t, session, updateSession, go, learner }) {
 
   async function say(lines, ctx) {
     lastCtx.current = ctx
-    convo.current = []
+    convo.current = [{ agent: 'checker', name: { hi: 'जाँच-मशीन', en: 'Code checker' }, text: ctx.verdict === 'correct' ? 'Answer is correct.' : `Answer is wrong (tag ${ctx.tag}).` }]
     for (const line of lines) await speak(line.agent, ctx, line.text)
   }
 
@@ -117,6 +117,8 @@ export default function Practice({ t, session, updateSession, go, learner }) {
     saveProg(np)
     setBusy(true)
     setBubbles([])
+    // Instant verdict from code, so the learner never waits to know if the answer was right.
+    push({ agent: 'verdict', ok: res.correct === true, text: res.correct ? { hi: '✓ सही उत्तर', en: '✓ Correct' } : { hi: '✗ अभी सही नहीं', en: '✗ Not right yet' } })
     const lines = task.feedback[res.tag] || task.feedback.other
     await say(lines, {
       task: { id: task.id, expr: task.expr || t(task.prompt), correct: task.correct },

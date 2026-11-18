@@ -57,7 +57,7 @@ export function validAI(out, ctx) {
 }
 
 // Ask an AI agent; fall back to the scripted (teacher-approved) line on timeout, error or failed check.
-export async function aiTurn(ctx, fallback, timeoutMs = 9000) {
+export async function aiTurn(ctx, fallback, timeoutMs = 11000) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ...fallback, source: 'scripted' }
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)

@@ -1,6 +1,8 @@
 // Vercel serverless function: one endpoint, three agent roles. The Gemini key never reaches the browser.
 // Fallback chain: flash-lite (key 1) → flash-lite (key 2) → flash (key 1); total budget ~8 s.
 
+export const config = { maxDuration: 30 }
+
 const CHAIN = [
   ['gemini-3.5-flash-lite', 'LLM_API_KEY'],
   ['gemini-3.5-flash-lite', 'LLM_API_KEY_2'],
@@ -76,13 +78,13 @@ export default async function handler(req, res) {
     reference_line: ctx.scripted, conversation: ctx.conversation || [], learner_question: ctx.learnerQuestion,
   })
 
-  const deadline = Date.now() + 8000
+  const deadline = Date.now() + 10000
   const errors = []
   for (const [model, envName] of CHAIN) {
     const key = process.env[envName]
     const left = deadline - Date.now()
     if (!key || left < 1500) continue
-    const out = await callGemini(model, key, system, user, Math.min(left, 4500))
+    const out = await callGemini(model, key, system, user, Math.min(left, 9000))
     const d = out.data
     if (d && typeof d.hi === 'string' && typeof d.en === 'string' && /[ऀ-ॿ]/.test(d.hi)) {
       const score = ctx.agent === 'jaanch_rubric' ? Math.max(0, Math.min(3, parseInt(d.score, 10) || 0)) : undefined
