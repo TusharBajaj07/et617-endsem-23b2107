@@ -1,6 +1,6 @@
 // Vercel serverless function: one endpoint, three agent roles. API keys never reach the browser.
 // Fallback chain: Groq gpt-oss-120b (~1 s, keys 1 → 2 → 3) → Groq gpt-oss-20b → Gemini flash-lite (keys 1, 2). Budget ~10 s.
-// Quota care: low reasoning effort, small output cap, only the last 4 conversation turns are sent.
+// Quota care: low reasoning effort, small output cap, only the last 6 conversation turns are sent.
 
 export const config = { maxDuration: 30 }
 
@@ -13,7 +13,7 @@ const CHAIN = [
   ['gemini', 'gemini-3.5-flash-lite', 'LLM_API_KEY_2'],
 ]
 
-async function callGroq(model, key, system, user, ms) {
+async function callGroq(model, key, system, user, ms, effort = 'low') {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), ms)
   try {
@@ -25,7 +25,7 @@ async function callGroq(model, key, system, user, ms) {
         model,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
         response_format: { type: 'json_object' },
-        reasoning_effort: 'low',
+        reasoning_effort: effort,
         temperature: 0.4,
         max_completion_tokens: 600,
       }),
@@ -55,6 +55,7 @@ Return ONLY JSON: {"hi": "<Hindi>", "en": "<English translation>"}`
 
 const CONVO = `
 You can see the CONVERSATION so far (messages from the other agents and the learner). Respond to it: refer to another agent by name when you build on or disagree with them (e.g. "जैसा जाँच ने बताया…" / "मैं जाँच से सहमत नहीं…").
+If the learner's last message REPLIES to a question another agent asked, first check that reply honestly with these rules: adding a positive → move right; adding a negative → move left; subtracting flips the direction. If the reply is wrong, say so kindly and show why with their numbers; NEVER say "exactly", "right" or "correct" to a wrong reply, and never quietly change the numbers in the question.
 When the learner's answer is wrong, NEVER use the words right / correct / सही / ठीक to agree with another agent (a child reads "Jaanch is right" as "my answer is right"). Build on them with "जैसा जाँच ने बताया… / As Jaanch said…" instead.
 Speak as yourself in the first person; never mention your own name. Never mention "the checker" or "the check"; just state things directly.
 While the learner has not yet answered correctly: never write the final answer, never compute it in words (e.g. "3 more than 5"), and never rewrite the question into an easier sum (e.g. "5 + 3"). Point only at the DIRECTION (left/right) or the udhaar idea and let the learner finish.
@@ -67,7 +68,8 @@ const ROLES = {
 M1 = "subtracting always makes it smaller" → use the udhaar model (removing a debt raises your account).
 M2 = "two minuses make a plus everywhere" → use number-line direction (adding a negative moves left).
 "other"/"sign"/"diff" → point at the direction to move. Give a targeted nudge for THIS item, not a lecture.` + CONVO,
-  sawaal: `You are SAWAAL, the Challenger. Ask ONE short "why?" question, or give ONE counterexample or extension that tests whether the learner's reasoning generalises (e.g. does the rule still hold when a negative is ADDED?). If the blackboard history shows an earlier misconception, refer to that question number. Do not answer your own question. If Jaanch accepted a memorised rule, you may challenge Jaanch.` + CONVO,
+  sawaal: `You are SAWAAL, the Challenger. Ask ONE short "why?" question, or give ONE counterexample or extension that tests whether the learner's reasoning generalises (e.g. does the rule still hold when a negative is ADDED?). If the blackboard history shows an earlier misconception, refer to that question number. Do not answer your own question. If Jaanch accepted a memorised rule, you may challenge Jaanch.
+VARY your challenges: never repeat the pattern of a question already in the conversation. Rotate between: subtracting a negative (e.g. 2 − (−6)), an udhaar story with rupees, crossing zero (e.g. −3 + 7), bigger numbers, and spotting someone's mistake. If the learner asks for something harder, give a two-step one (e.g. −2 − (−5) + (−4)) or a story problem.` + CONVO,
   jaanch_rubric: `You are JAANCH, the Evaluator. Score the learner's free-text explanation of why 5 − (−3) = 8 on a 0–3 rubric:
 +1 uses a model (number-line direction or udhaar/debt), +1 says subtracting a negative moves right or increases the value, +1 reaches 8 consistent with the reason.
 The learner may write in Hindi, Hinglish (Roman Hindi) or English. Give ONE encouraging sentence naming what to add next.
@@ -111,7 +113,7 @@ export default async function handler(req, res) {
     task: ctx.task, verdict: ctx.verdict, misconception_tag: ctx.tag, attempt: ctx.attempt,
     learner_answer: ctx.learnerAnswer, learner_text: ctx.learnerText, blackboard: ctx.blackboard,
     debate: ctx.debate ? 'Jaanch accepted the learner\'s memorised shortcut. As Sawaal you DISAGREE: explain in one sentence why a memorised rule is risky and name the counterexample −2 + (−5). Set stance to "disagree".' : undefined,
-    reference_line: ctx.scripted, conversation: (ctx.conversation || []).slice(-4).map((c) => ({ agent: c.agent, text: String(c.text || '').slice(0, 300) })),
+    reference_line: ctx.scripted, conversation: (ctx.conversation || []).slice(-6).map((c) => ({ agent: c.agent, text: String(c.text || '').slice(0, 300) })),
     learner_question: ctx.learnerQuestion ? String(ctx.learnerQuestion).slice(0, 200) : undefined,
   })
 
@@ -122,7 +124,9 @@ export default async function handler(req, res) {
     const left = deadline - Date.now()
     if (!key || left < 1500) continue
     const call = provider === 'groq' ? callGroq : callGemini
-    const out = await call(model, key, system, user, Math.min(left, provider === 'groq' ? 4000 : 9000))
+    // A learner's own question gets more reasoning (accuracy over speed); automatic feedback stays fast.
+    const asked = !!ctx.learnerQuestion
+    const out = await call(model, key, system, user, Math.min(left, provider === 'groq' ? (asked ? 6000 : 4000) : 9000), asked ? 'medium' : 'low')
     const d = out.data
     if (d && typeof d.hi === 'string' && typeof d.en === 'string' && /[ऀ-ॿ]/.test(d.hi)) {
       const score = ctx.agent === 'jaanch_rubric' ? Math.max(0, Math.min(3, parseInt(d.score, 10) || 0)) : undefined
