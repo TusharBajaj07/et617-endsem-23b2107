@@ -13,6 +13,11 @@ const CARD_FALLBACK = {
   C4: { hi: '"दो माइनस = प्लस" सिर्फ़ −(−) पर लगता है। +(−) में बाईं ओर चलते हैं।', en: '"Two minuses = plus" works only for −(−). With +(−) you move left.' },
 }
 
+const OFFLINE_AGAIN = {
+  hi: 'अभी इंटरनेट से जुड़ नहीं पा रहा, इसलिए नई बात नहीं बता सकता। ऊपर की संख्या रेखा पर उदाहरण टैप करके देखो, या अगला कार्ड पढ़ो।',
+  en: "I can't reach the internet right now, so I can't say more. Tap the examples on the number line above, or read the next card.",
+}
+
 // Card 4: Sawaal asks for a prediction before practice (checked later by Practice question 1).
 const PREDICT = {
   ask: { hi: 'अभ्यास से पहले एक बात: −4 + (−3) का उत्तर धनात्मक होगा या ऋणात्मक? पहले अंदाज़ा लगाओ।', en: 'Before practice: will −4 + (−3) be positive or negative? Make a guess first.' },
@@ -78,7 +83,9 @@ export default function Learn({ t, session, updateSession, go }) {
     const conversation = chat
       .filter((b) => b.text && !b.typing)
       .map((b) => (b.agent === 'you' ? { agent: 'learner', text: b.text } : { agent: b.agent, name: AGENTS[b.agent]?.name, text: t(b.text) }))
-    const fallback = CARD_FALLBACK[card.id]
+    // Offline/AI failure: first the card's key idea; after that, say so plainly instead of repeating it.
+    const asked = chat.filter((b) => b.agent === 'samjhao' && !b.typing).length
+    const fallback = asked === 0 ? CARD_FALLBACK[card.id] : OFFLINE_AGAIN
     const out = await aiTurn(
       {
         agent: 'samjhao',
