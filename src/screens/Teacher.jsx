@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { DISAGREE as D } from '../content'
+import { DISAGREE as D, TASKS } from '../content'
 import { mastery } from '../agents'
 import * as store from '../store'
 import * as sync from '../sync'
 
 const PIN = '0617'
+// The shortcut reason the learner picked on T5 (the cause of every 'Two views' card).
+const T5_SHORTCUT = TASKS.find((x) => x.id === 'T5').options.find((o) => o.tag === 'shortcut').label
 
 function download(name, text, type) {
   const a = document.createElement('a')
@@ -167,6 +169,10 @@ export default function Teacher({ t }) {
               </p>
               {r.kind === 'disagreement' ? (
                 <>
+                  <p className="quote">
+                    {t({ hi: `${r.learnerName} का कारण (विकल्प B), 5 − (−3) = 8 के लिए:`, en: `${r.learnerName}'s reason (option B) for 5 − (−3) = 8:` })}{' '}
+                    “{t(T5_SHORTCUT)}”
+                  </p>
                   <p className="view jaanch">🔍 {t(r.jaanch)}</p>
                   <p className="view sawaal">❓ {t(r.sawaal)}</p>
                   <p>
