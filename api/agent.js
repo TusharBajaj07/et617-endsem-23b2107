@@ -53,6 +53,7 @@ Return ONLY JSON: {"hi": "<Hindi>", "en": "<English translation>"}`
 
 const CONVO = `
 You can see the CONVERSATION so far (messages from the other agents and the learner). Respond to it: refer to another agent by name when you build on or disagree with them (e.g. "जाँच ने सही कहा…" / "मैं जाँच से सहमत नहीं…").
+Speak as yourself in the first person; never mention your own name. A conversation entry from "checker" is the code checker (a machine): do not call it Jaanch; you may simply build on its verdict.
 If "learner_question" is present, the learner asked YOU directly: answer it in your role as a hint, never giving the final answer of the current question.
 Return ONLY JSON: {"hi": "<Hindi>", "en": "<English>", "stance": "agree" | "disagree"}  (stance = do you agree with the previous agent's message; "agree" if there is none)`
 
