@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { TASKS } from '../content'
+import { TASKS, AGENTS } from '../content'
 import { check, blackboard, aiTurn, rubricFallback, parseNum, fmt } from '../agents'
 import * as store from '../store'
 import NumberLine from '../components/NumberLine'
@@ -41,18 +41,47 @@ export default function Practice({ t, session, updateSession, go, learner }) {
     updateSession((s) => ({ progress: { ...s.progress, [task.id]: p } }))
   }
 
-  // Jaanch's verdict is instant and code-checked; Samjhao / Sawaal lines go to the AI with the blackboard.
+  // Every agent is an AI call that sees the conversation so far (the blackboard + other agents' messages).
+  // Code has already decided correctness; the scripted line is only the fallback.
+  const convo = useRef([])
+  const lastCtx = useRef(null)
+
+  async function speak(agent, ctx, fallback, extra = {}) {
+    push({ agent, typing: true })
+    const out = await aiTurn({ ...ctx, agent, scripted: fallback, conversation: convo.current, ...extra }, fallback)
+    const prev = convo.current[convo.current.length - 1]
+    const disagrees = out.source === 'ai' && out.stance === 'disagree' && prev && prev.agent !== 'learner'
+    replaceLast({
+      agent, text: { hi: out.hi, en: out.en },
+      note: disagrees ? { hi: `🤝 ${prev.name.hi} से अलग राय`, en: `🤝 Disagrees with ${prev.name.en}` } : null,
+    })
+    convo.current = [...convo.current, { agent, name: AGENTS[agent].name, text: out.en }]
+    store.logEvent('agent_message', { target: task.id, objective_id: task.lo, meta: { agent, source: out.source, stance: out.stance || null, model: out.model || null } })
+    return out
+  }
+
   async function say(lines, ctx) {
-    for (const line of lines) {
-      if (line.agent === 'jaanch' || !ctx) {
-        push({ ...line, source: line.agent === 'jaanch' ? 'checked' : 'scripted' })
-        continue
-      }
-      push({ agent: line.agent, typing: true })
-      const out = await aiTurn({ ...ctx, agent: line.agent, scripted: line.text }, line.text)
-      replaceLast({ agent: line.agent, text: { hi: out.hi, en: out.en }, source: out.source })
-      store.logEvent('agent_message', { target: task.id, objective_id: task.lo, meta: { agent: line.agent, source: out.source, model: out.model || null } })
+    lastCtx.current = ctx
+    convo.current = []
+    for (const line of lines) await speak(line.agent, ctx, line.text)
+  }
+
+  const [question, setQuestion] = useState('')
+  async function ask(agent) {
+    const q = question.trim()
+    if (!q || busy) return
+    setBusy(true)
+    setQuestion('')
+    push({ agent: 'you', text: q })
+    convo.current = [...convo.current, { agent: 'learner', name: { hi: 'बच्चा', en: 'Learner' }, text: q }]
+    store.logEvent('ai_message_sent', { target: task.id, objective_id: task.lo, value: q, meta: { to: agent } })
+    const ctx = lastCtx.current || {
+      task: { id: task.id, expr: task.expr || t(task.prompt), correct: task.correct },
+      verdict: 'not_attempted', attempt: 0, blackboard: blackboard(session.progress),
     }
+    const fallback = agent === 'samjhao' ? task.hints[0] : { hi: 'अच्छा सवाल! पहले खुद सोचो: दाईं ओर जाना है या बाईं ओर?', en: 'Good question! First think: right or left?' }
+    await speak(agent, ctx, fallback, { learnerQuestion: q })
+    setBusy(false)
   }
 
   function buildAnswer() {
@@ -224,6 +253,20 @@ export default function Practice({ t, session, updateSession, go, learner }) {
           <Bubble key={i} b={b} t={t} />
         ))}
       </div>
+
+      {!busy && (
+        <div className="askbox">
+          <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={200} placeholder={t({ hi: 'कुछ पूछना है? यहाँ लिखो…', en: 'Want to ask something? Type here…' })} aria-label="question for agents" />
+          <div className="actions">
+            <button className="ghost" disabled={!question.trim()} onClick={() => ask('samjhao')}>
+              🧭 {t({ hi: 'समझाओ से पूछो', en: 'Ask Samjhao' })}
+            </button>
+            <button className="ghost" disabled={!question.trim()} onClick={() => ask('sawaal')}>
+              ❓ {t({ hi: 'सवाल से पूछो', en: 'Ask Sawaal' })}
+            </button>
+          </div>
+        </div>
+      )}
 
       {phase === 'answer' && (
         <div className="actions">

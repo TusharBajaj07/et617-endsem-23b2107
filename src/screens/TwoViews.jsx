@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { DISAGREE as D } from '../content'
-import { blackboard } from '../agents'
+import { DISAGREE as D, AGENTS } from '../content'
+import { blackboard, aiTurn } from '../agents'
 import * as store from '../store'
 import NumberLine from '../components/NumberLine'
 import Bubble from '../components/Bubble'
@@ -20,11 +20,37 @@ export default function TwoViews({ t, session, updateSession, go, learner }) {
     store.logEvent('disagreement_shown', { target: 'T5', objective_id: 'LO2', meta: { priorM2: prior?.task || null } })
   }, [prior?.task])
 
-  const intro = [
-    { ...D.jaanch, source: 'checked' },
-    { ...D.sawaal, source: 'scripted' },
-    ...(prior ? [{ ...D.sawaalHistory(prior.no), source: 'scripted' }] : []),
-  ]
+  // Live debate: Jaanch (AI) judges the shortcut reason, then Sawaal (AI) reads Jaanch's message and responds.
+  const [intro, setIntro] = useState([{ agent: 'jaanch', typing: true }])
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const ctx = {
+        task: { id: 'T5', expr: '5 − (−3) = 8', correct: 8 }, verdict: 'correct', tag: 'shortcut', attempt: 1,
+        learnerAnswer: 'B: "two minuses together make a plus: −(−3) = +3, so 5 + 3 = 8"', blackboard: bb,
+      }
+      const j = await aiTurn({ ...ctx, agent: 'jaanch', scripted: D.jaanch.text, conversation: [] }, D.jaanch.text)
+      if (!alive) return
+      setIntro([{ agent: 'jaanch', text: { hi: j.hi, en: j.en } }, { agent: 'sawaal', typing: true }])
+      const convo = [{ agent: 'jaanch', name: AGENTS.jaanch.name, text: j.en }]
+      const q = await aiTurn(
+        { ...ctx, agent: 'sawaal', scripted: D.sawaal.text, conversation: convo, learnerQuestion: undefined, debate: true },
+        D.sawaal.text,
+      )
+      if (!alive) return
+      const hist = prior ? [D.sawaalHistory(prior.no)] : []
+      setIntro([
+        { agent: 'jaanch', text: { hi: j.hi, en: j.en } },
+        { agent: 'sawaal', text: { hi: q.hi, en: q.en }, note: { hi: '🤝 जाँच से अलग राय', en: '🤝 Disagrees with Jaanch' } },
+        ...hist,
+      ])
+      store.logEvent('agent_message', { target: 'T5', objective_id: 'LO2', meta: { agent: 'jaanch', source: j.source } })
+      store.logEvent('agent_message', { target: 'T5', objective_id: 'LO2', meta: { agent: 'sawaal', source: q.source, stance: q.stance || null } })
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
 
   function resolve(choice, extra = {}) {
     store.logEvent('disagreement_choice', { target: 'T5', objective_id: 'LO2', value: choice, meta: extra })
@@ -73,6 +99,7 @@ export default function TwoViews({ t, session, updateSession, go, learner }) {
         ))}
       </div>
 
+      {!intro.some((b) => b.typing) && (
       <div className="debate">
         <h2>{t(D.title)}</h2>
         <div className="views">
@@ -94,6 +121,7 @@ export default function TwoViews({ t, session, updateSession, go, learner }) {
           </div>
         )}
       </div>
+      )}
 
       {stage === 'test' && (
         <div className="stack">

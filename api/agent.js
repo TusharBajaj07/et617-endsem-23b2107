@@ -18,12 +18,18 @@ Rules:
 - Stay consistent with the reference line from the teacher-approved script, but personalise using the learner's attempt and history.
 Return ONLY JSON: {"hi": "<Hindi>", "en": "<English translation>"}`
 
+const CONVO = `
+You can see the CONVERSATION so far (messages from the other agents and the learner). Respond to it: refer to another agent by name when you build on or disagree with them (e.g. "जाँच ने सही कहा…" / "मैं जाँच से सहमत नहीं…").
+If "learner_question" is present, the learner asked YOU directly: answer it in your role as a hint, never giving the final answer of the current question.
+Return ONLY JSON: {"hi": "<Hindi>", "en": "<English>", "stance": "agree" | "disagree"}  (stance = do you agree with the previous agent's message; "agree" if there is none)`
+
 const ROLES = {
+  jaanch: `You are JAANCH, the Evaluator. The code checker's verdict and misconception tag are FINAL. Tell the learner, in one sentence, whether the answer is right (exactly as the verdict says), and if wrong name the likely misconception in child-friendly words (M1 = treated subtracting a negative like subtracting a positive; M2 = used "two minuses make a plus" where it does not apply). Do not explain the method; Samjhao or Sawaal will follow.` + CONVO,
   samjhao: `You are SAMJHAO, the Explainer. Jaanch diagnosed the misconception tag on the blackboard:
 M1 = "subtracting always makes it smaller" → use the udhaar model (removing a debt raises your account).
 M2 = "two minuses make a plus everywhere" → use number-line direction (adding a negative moves left).
-"other"/"sign"/"diff" → point at the direction to move. Give a targeted nudge for THIS item, not a lecture.`,
-  sawaal: `You are SAWAAL, the Challenger. Ask ONE short "why?" question, or give ONE counterexample or extension that tests whether the learner's reasoning generalises (e.g. does the rule still hold when a negative is ADDED?). If the blackboard history shows an earlier misconception, refer to that question number. Do not answer your own question.`,
+"other"/"sign"/"diff" → point at the direction to move. Give a targeted nudge for THIS item, not a lecture.` + CONVO,
+  sawaal: `You are SAWAAL, the Challenger. Ask ONE short "why?" question, or give ONE counterexample or extension that tests whether the learner's reasoning generalises (e.g. does the rule still hold when a negative is ADDED?). If the blackboard history shows an earlier misconception, refer to that question number. Do not answer your own question. If Jaanch accepted a memorised rule, you may challenge Jaanch.` + CONVO,
   jaanch_rubric: `You are JAANCH, the Evaluator. Score the learner's free-text explanation of why 5 − (−3) = 8 on a 0–3 rubric:
 +1 uses a model (number-line direction or udhaar/debt), +1 says subtracting a negative moves right or increases the value, +1 reaches 8 consistent with the reason.
 The learner may write in Hindi, Hinglish (Roman Hindi) or English. Give ONE encouraging sentence naming what to add next.
@@ -66,7 +72,8 @@ export default async function handler(req, res) {
   const user = JSON.stringify({
     task: ctx.task, verdict: ctx.verdict, misconception_tag: ctx.tag, attempt: ctx.attempt,
     learner_answer: ctx.learnerAnswer, learner_text: ctx.learnerText, blackboard: ctx.blackboard,
-    reference_line: ctx.scripted,
+    debate: ctx.debate ? 'Jaanch accepted the learner\'s memorised shortcut. As Sawaal you DISAGREE: explain in one sentence why a memorised rule is risky and name the counterexample −2 + (−5). Set stance to "disagree".' : undefined,
+    reference_line: ctx.scripted, conversation: ctx.conversation || [], learner_question: ctx.learnerQuestion,
   })
 
   const deadline = Date.now() + 8000
@@ -79,7 +86,8 @@ export default async function handler(req, res) {
     const d = out.data
     if (d && typeof d.hi === 'string' && typeof d.en === 'string' && /[ऀ-ॿ]/.test(d.hi)) {
       const score = ctx.agent === 'jaanch_rubric' ? Math.max(0, Math.min(3, parseInt(d.score, 10) || 0)) : undefined
-      return res.status(200).json({ ok: true, hi: d.hi.trim(), en: d.en.trim(), score, model })
+      const stance = d.stance === 'disagree' ? 'disagree' : 'agree'
+      return res.status(200).json({ ok: true, hi: d.hi.trim(), en: d.en.trim(), score, stance, model })
     }
     errors.push(`${model}/${envName}: ${out.error || 'invalid output'}`)
   }

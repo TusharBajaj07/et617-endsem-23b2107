@@ -46,7 +46,9 @@ export function validAI(out, ctx) {
   if (!out || typeof out.hi !== 'string' || typeof out.en !== 'string') return false
   if (!hasDevanagari(out.hi) || out.hi.length > 400 || out.en.length > 400) return false
   // No answer reveal while the learner is still trying.
-  if (ctx?.verdict === 'wrong' && ctx.attempt < 2 && ctx.task?.correct != null) {
+  // Jaanch must not call a wrong answer right.
+  if (ctx?.agent === 'jaanch' && ctx.verdict === 'wrong' && /\b(correct|right)\b/i.test(out.en) && !/\b(not|isn't|incorrect|wrong)\b/i.test(out.en)) return false
+  if (ctx?.verdict !== 'correct' && (ctx?.attempt || 0) < 2 && ctx?.task?.correct != null) {
     const c = String(Math.abs(ctx.task.correct))
     const re = new RegExp(`=\\s*[−-]?\\s*${c}(?!\\d)`)
     if (re.test(out.hi) || re.test(out.en)) return false
@@ -67,7 +69,7 @@ export async function aiTurn(ctx, fallback, timeoutMs = 9000) {
       signal: ctrl.signal,
     })
     const j = await r.json()
-    if (j.ok && validAI(j, ctx)) return { hi: j.hi, en: j.en, score: j.score, source: 'ai', model: j.model }
+    if (j.ok && validAI(j, ctx)) return { hi: j.hi, en: j.en, score: j.score, stance: j.stance, source: 'ai', model: j.model }
   } catch {
     /* fall through to scripted */
   } finally {
