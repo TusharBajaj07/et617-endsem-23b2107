@@ -34,7 +34,8 @@ export default function Practice({ t, session, updateSession, go, learner }) {
 
   const push = (b) => setBubbles((xs) => [...xs, b])
   const replaceLast = (b) => setBubbles((xs) => [...xs.slice(0, -1), b])
-  const modelLine = () => ({ agent: 'jaanch', source: 'checked', text: { hi: 'सही उत्तर: ' + task.model.hi, en: 'Correct answer: ' + task.model.en } })
+  // The worked answer is its own card (not a Jaanch bubble), so it never reads like another verdict.
+  const modelLine = () => ({ agent: 'answer', text: task.model })
 
   function saveProg(p) {
     progRef.current = p

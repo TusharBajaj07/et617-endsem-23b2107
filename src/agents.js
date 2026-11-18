@@ -47,6 +47,8 @@ export function validAI(out, ctx) {
   if (!hasDevanagari(out.hi) || out.hi.length > 400 || out.en.length > 400) return false
   // No answer reveal while the learner is still trying.
   // Jaanch must not call a wrong answer right.
+  // After a wrong answer, no agent may say "X is right/correct" (the child reads it as "my answer is right").
+  if (ctx?.verdict === 'wrong' && (/\b(is|was|are)\s+(right|correct)\b|'s\s+(right|correct)\b/i.test(out.en) || /ने\s+(सही|ठीक)\s+कहा|(सही|ठीक)\s+(कह|बोल)/.test(out.hi))) return false
   if (ctx?.agent === 'jaanch' && ctx.verdict === 'wrong' && /\b(correct|right)\b/i.test(out.en) && !/\b(not|isn't|incorrect|wrong)\b/i.test(out.en)) return false
   if (ctx?.verdict !== 'correct' && (ctx?.attempt || 0) < 2 && ctx?.task?.correct != null) {
     const c = String(Math.abs(ctx.task.correct))

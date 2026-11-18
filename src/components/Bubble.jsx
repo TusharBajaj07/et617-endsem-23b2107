@@ -9,6 +9,14 @@ export default function Bubble({ b, t }) {
   if (b.agent === 'verdict') {
     return <div className={'verdict ' + (b.ok ? 'ok' : 'no')}>{t(b.text)}</div>
   }
+  if (b.agent === 'answer') {
+    return (
+      <div className="answer-card">
+        <div className="answer-label">{t({ hi: '📘 हल देखो', en: '📘 How to solve it' })}</div>
+        <div>{t(b.text)}</div>
+      </div>
+    )
+  }
   if (b.agent === 'system') {
     return <div className="bubble system">{t(b.text)}</div>
   }

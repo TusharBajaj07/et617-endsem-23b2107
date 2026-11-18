@@ -11,7 +11,9 @@
   --danger: #c4312b;
   --danger-soft: #fdecea;
 
-  --jaanch: #12805a;   --jaanch-soft: #e6f4ee;
+  /* Jaanch is a neutral slate so green only ever means "correct" and red only "not yet" */
+  --jaanch: #3a5f7a;   --jaanch-soft: #eaf0f4;
+  --ok: #12805a;       --ok-soft: #e6f4ee;
   --samjhao: #6a47d4;  --samjhao-soft: #f0ebfc;
   --sawaal: #b05e00;   --sawaal-soft: #fdf1e1;
   --teacher: #b8325b;  --teacher-soft: #fce9ef;

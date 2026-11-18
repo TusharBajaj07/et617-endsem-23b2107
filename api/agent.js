@@ -54,7 +54,8 @@ Rules:
 Return ONLY JSON: {"hi": "<Hindi>", "en": "<English translation>"}`
 
 const CONVO = `
-You can see the CONVERSATION so far (messages from the other agents and the learner). Respond to it: refer to another agent by name when you build on or disagree with them (e.g. "जाँच ने सही कहा…" / "मैं जाँच से सहमत नहीं…").
+You can see the CONVERSATION so far (messages from the other agents and the learner). Respond to it: refer to another agent by name when you build on or disagree with them (e.g. "जैसा जाँच ने बताया…" / "मैं जाँच से सहमत नहीं…").
+When the learner's answer is wrong, NEVER use the words right / correct / सही / ठीक to agree with another agent (a child reads "Jaanch is right" as "my answer is right"). Build on them with "जैसा जाँच ने बताया… / As Jaanch said…" instead.
 Speak as yourself in the first person; never mention your own name. Never mention "the checker" or "the check"; just state things directly.
 While the learner has not yet answered correctly: never write the final answer, never compute it in words (e.g. "3 more than 5"), and never rewrite the question into an easier sum (e.g. "5 + 3"). Point only at the DIRECTION (left/right) or the udhaar idea and let the learner finish.
 If "learner_question" is present, the learner asked YOU directly: actually answer their "why/what" with the number line or udhaar idea (Samjhao: a short explanation; Sawaal: a short explanation plus one guiding question back). Never give the final answer of the current question.
