@@ -259,14 +259,13 @@ export default function Practice({ t, session, updateSession, go, learner }) {
       {!busy && (
         <div className="askbox">
           <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={200} placeholder={t({ hi: 'कुछ पूछना है? यहाँ लिखो…', en: 'Want to ask something? Type here…' })} aria-label="question for agents" />
-          <div className="actions">
-            <button className="ghost" disabled={!question.trim()} onClick={() => ask('samjhao')}>
-              🧭 {t({ hi: 'समझाओ से पूछो', en: 'Ask Samjhao' })}
-            </button>
-            <button className="ghost" disabled={!question.trim()} onClick={() => ask('sawaal')}>
-              ❓ {t({ hi: 'सवाल से पूछो', en: 'Ask Sawaal' })}
-            </button>
-          </div>
+          {/* Main help first (Samjhao explains); the challenge is a smaller second option below. */}
+          <button className="ask-main" disabled={!question.trim()} onClick={() => ask('samjhao')}>
+            🧭 {t({ hi: 'मुझे समझाओ', en: 'Explain it to me' })}
+          </button>
+          <button className="ask-alt" disabled={!question.trim()} onClick={() => ask('sawaal')}>
+            ❓ {t({ hi: 'या मुझे चुनौती दो', en: 'Or challenge me instead' })}
+          </button>
         </div>
       )}
 

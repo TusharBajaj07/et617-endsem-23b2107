@@ -149,7 +149,10 @@ form { display: flex; flex-direction: column; gap: 10px; }
 
 .askbox { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
 .askbox input { min-height: 46px; background: var(--app); border-color: transparent; }
-.askbox .ghost { font-size: 0.88rem; padding: 6px 8px; min-height: 42px; }
+.ask-main { width: 100%; min-height: 52px; border: none; border-radius: var(--r-md); background: var(--samjhao); color: #fff; font-weight: 600; font-size: 1rem; }
+.ask-main:disabled { background: var(--samjhao-soft); color: #a594dc; }
+.ask-alt { align-self: center; min-height: 40px; padding: 0 12px; border: none; background: transparent; color: var(--ink-soft); font-weight: 500; font-size: 0.88rem; text-decoration: underline; text-underline-offset: 3px; }
+.ask-alt:disabled { opacity: 0.5; }
 
 /* ---------- Two views ---------- */
 .debate { padding: 16px; background: var(--surface); border: 1.5px solid var(--ink); border-radius: var(--r-lg); display: flex; flex-direction: column; gap: 12px; }
