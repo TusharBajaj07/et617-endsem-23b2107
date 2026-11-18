@@ -28,3 +28,8 @@ dist-ssr
 .env.*
 !.env.example
 .vercel
+
+# Local key files (never commit)
+gemini_api.txt
+*_api.txt
+*.key
