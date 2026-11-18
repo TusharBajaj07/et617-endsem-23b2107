@@ -66,6 +66,13 @@ form { display: flex; flex-direction: column; gap: 10px; }
 .seg { display: flex; gap: 8px; align-items: center; }
 .seg button { flex: 1; border-radius: var(--r-md); border: 1.5px solid var(--line); background: var(--surface); font-weight: 600; font-size: 1rem; }
 .seg button.sq { flex: 0 0 56px; font-size: 1.6rem; line-height: 1; }
+/* T2: small +/− stacked on the left, number on the right */
+.signrow { display: flex; gap: 10px; align-items: stretch; }
+.signs { display: flex; flex-direction: column; gap: 6px; flex: 0 0 44px; }
+.signs button { height: 40px; padding: 0; border-radius: var(--r-md); border: 1.5px solid var(--line); background: var(--surface); font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.signs button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.signnum { flex: 1; font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.signnum::placeholder { font-size: 1rem; font-weight: 500; }
 .seg button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
 .preview { font-size: 1.5rem; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
 

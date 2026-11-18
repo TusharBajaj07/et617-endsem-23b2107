@@ -206,22 +206,12 @@ export default function Practice({ t, session, updateSession, go, learner }) {
       )}
 
       {task.type === 'sign' && (
-        <div className="stack">
-          <div className="field">
-            <span className="lbl">{t({ hi: 'पहले चिह्न चुनो', en: 'First pick the sign' })}</span>
-            <div className="seg">
-              <button className={sign === '+' ? 'on' : ''} disabled={phase !== 'answer'} onClick={() => setSign('+')}>
-                + {t({ hi: 'धनात्मक', en: 'positive' })}
-              </button>
-              <button className={sign === '-' ? 'on' : ''} disabled={phase !== 'answer'} onClick={() => setSign('-')}>
-                − {t({ hi: 'ऋणात्मक', en: 'negative' })}
-              </button>
-            </div>
+        <div className="signrow">
+          <div className="signs" role="group" aria-label="sign">
+            <button className={sign === '+' ? 'on' : ''} disabled={phase !== 'answer'} onClick={() => setSign('+')} aria-label="plus">+</button>
+            <button className={sign === '-' ? 'on' : ''} disabled={phase !== 'answer'} onClick={() => setSign('-')} aria-label="minus">−</button>
           </div>
-          <div className="field">
-            <span className="lbl">{t({ hi: 'फिर संख्या लिखो', en: 'Then type the number' })}</span>
-            <input className="num" inputMode="numeric" value={num} onChange={(e) => setNum(e.target.value)} disabled={phase !== 'answer' || !sign} placeholder="?" maxLength={4} aria-label="number" />
-          </div>
+          <input className="signnum" inputMode="numeric" value={num} onChange={(e) => setNum(e.target.value.replace(/[^0-9]/g, ''))} disabled={phase !== 'answer'} placeholder={t({ hi: 'संख्या यहाँ लिखो', en: 'Enter the number here' })} maxLength={4} aria-label="number" />
         </div>
       )}
 
