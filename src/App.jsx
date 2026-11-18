@@ -16,6 +16,7 @@ export default function App() {
   const [screen, setScreen] = useState('S1')
   const [learner, setLearner] = useState(null)
   const [session, setSession] = useState(null)
+  const [pausedAt, setPausedAt] = useState(null) // pause = overlay; the screen underneath stays as it was
 
   const t = (o) => (o && typeof o === 'object' ? (o[lang] ?? o.hi) : o)
 
@@ -27,6 +28,26 @@ export default function App() {
     store.logEvent('page_view', { target: screen })
     window.scrollTo(0, 0)
   }, [screen])
+
+  // Shared phone: if the parent takes it back (app hidden / screen locked), pause automatically.
+  useEffect(() => {
+    if (!learner) return
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') setPausedAt((p) => p ?? Date.now())
+    }
+    document.addEventListener('visibilitychange', onHide)
+    return () => document.removeEventListener('visibilitychange', onHide)
+  }, [learner])
+
+  function pause() {
+    store.logEvent('session_pause', { target: screen })
+    setPausedAt(Date.now())
+  }
+
+  function resume() {
+    store.logEvent('session_resume', { target: screen, duration_ms: Date.now() - (pausedAt || Date.now()) })
+    setPausedAt(null)
+  }
 
   function updateSession(patch) {
     setSession((s) => {
@@ -55,6 +76,7 @@ export default function App() {
   function exit() {
     store.logEvent('session_end', { target: screen })
     store.setUser('anon')
+    setPausedAt(null)
     setLearner(null)
     setSession(null)
     setScreen('S1')
@@ -73,9 +95,14 @@ export default function App() {
           <button className="chip" onClick={() => setLang(lang === 'hi' ? 'en' : 'hi')} aria-label="Language">
             {lang === 'hi' ? 'EN' : 'हिं'}
           </button>
-          {(learner || screen === 'S6') && (
-            <button className="chip" onClick={exit}>
+          {learner && screen !== 'S6' && (
+            <button className="chip" onClick={pause}>
               {t({ hi: '⏸ रुको', en: '⏸ Pause' })}
+            </button>
+          )}
+          {screen === 'S6' && (
+            <button className="chip" onClick={exit}>
+              {t({ hi: 'बाहर जाओ', en: 'Exit' })}
             </button>
           )}
         </div>
@@ -99,6 +126,30 @@ export default function App() {
         {screen === 'S5' && session && <Summary {...props} />}
         {screen === 'S6' && <Teacher {...props} />}
       </main>
+
+      {pausedAt && learner && (
+        <div className="pause" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+          <div className="pause-card">
+            <div className="pause-icon" aria-hidden="true">⏸</div>
+            <h2 id="pause-title">{t({ hi: 'रुका हुआ', en: 'Paused' })}</h2>
+            <p>
+              {t({
+                hi: `${learner.name}, तुम्हारा काम इस फ़ोन पर सेव है। जब चाहो, वहीं से आगे करो।`,
+                en: `${learner.name}, your work is saved on this phone. Carry on from the same place whenever you like.`,
+              })}
+            </p>
+            <button className="primary wide" onClick={resume} autoFocus>
+              ▶ {t({ hi: 'वापस चलो', en: 'Resume' })}
+            </button>
+            <button className="pause-exit" onClick={exit}>
+              {t({ hi: 'आज के लिए बस', en: 'Done for today' })}
+            </button>
+            <div className="pause-token">
+              ID {ROLL} · {screen} {t(SCREENS[screen])}
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="foot">
         ET 617 · {ROLL} · {t({ hi: 'डेटा पहले फ़ोन पर, फिर इंटरनेट मिलने पर सेव होता है', en: 'Saved on the phone first, synced when online' })}
