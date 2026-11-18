@@ -4,7 +4,7 @@
 export const ROLL = '23B2107'
 
 export const AGENTS = {
-  jaanch: { icon: '✅', name: { hi: 'जाँच', en: 'Jaanch' }, role: { hi: 'मूल्यांकन', en: 'Evaluator' } },
+  jaanch: { icon: '🔍', name: { hi: 'जाँच', en: 'Jaanch' }, role: { hi: 'मूल्यांकन', en: 'Evaluator' } },
   samjhao: { icon: '🧭', name: { hi: 'समझाओ', en: 'Samjhao' }, role: { hi: 'व्याख्या', en: 'Explainer' } },
   sawaal: { icon: '❓', name: { hi: 'सवाल', en: 'Sawaal' }, role: { hi: 'चुनौती', en: 'Challenger' } },
 }
