@@ -1,6 +1,8 @@
 // Offline-first storage: everything lives in localStorage on the phone (works with no data connection).
 // Clickstream events follow the schema in supabase/schema.sql so they can be synced later.
 
+import { enqueue, reviewToRow } from './sync'
+
 const K = {
   learners: 'gc_learners',
   events: 'gc_events',
@@ -47,16 +49,21 @@ export function upsertLearner(name) {
   }
   l.lastActive = new Date().toISOString()
   write(K.learners, list)
+  enqueue('learner', { id: l.id, name: l.name, progress: read(K.session(l.id), null)?.progress || {}, last_active: l.lastActive })
   return l
 }
 
 export const loadSession = (id) => read(K.session(id), null)
-export const saveSession = (id, s) => write(K.session(id), s)
+export function saveSession(id, s) {
+  write(K.session(id), s)
+  const l = getLearners().find((x) => x.id === id)
+  if (l) enqueue('learner', { id, name: l.name, progress: s.progress || {}, last_active: new Date().toISOString() })
+}
 
 // ---- clickstream ----
 export function logEvent(event_type, d = {}) {
   const events = read(K.events, [])
-  events.push({
+  const e = {
     ts: new Date().toISOString(),
     user_id: currentUser,
     session_id: sessionId,
@@ -67,8 +74,10 @@ export function logEvent(event_type, d = {}) {
     correct: d.correct ?? null,
     duration_ms: d.duration_ms ?? null,
     meta: d.meta ?? {},
-  })
+  }
+  events.push(e)
   write(K.events, events.slice(-5000))
+  enqueue('event', e)
 }
 
 export const getEvents = () => read(K.events, [])
@@ -78,15 +87,29 @@ export const getReviews = () => read(K.reviews, [])
 
 export function addReview(r) {
   const list = getReviews()
-  list.push({ id: uid('R'), ts: new Date().toISOString(), status: 'pending', ...r })
+  const rev = { id: uid('R'), ts: new Date().toISOString(), status: 'pending', ...r }
+  list.push(rev)
   write(K.reviews, list)
+  enqueue('review', reviewToRow(rev))
 }
 
-export function updateReview(id, patch) {
-  write(
-    K.reviews,
-    getReviews().map((r) => (r.id === id ? { ...r, ...patch, decidedAt: new Date().toISOString() } : r)),
-  )
+export function updateReview(id, patch, base) {
+  const list = getReviews()
+  const cur = list.find((r) => r.id === id) || base
+  if (!cur) return
+  const next = { ...cur, ...patch, decidedAt: new Date().toISOString() }
+  write(K.reviews, [...list.filter((r) => r.id !== id), next])
+  enqueue('review', reviewToRow(next))
+}
+
+// Merge reviews fetched from Supabase; a decided review wins over a pending copy.
+export function mergeReviews(remote) {
+  const map = new Map(getReviews().map((r) => [r.id, r]))
+  for (const r of remote) {
+    const cur = map.get(r.id)
+    if (!cur || (cur.status === 'pending' && r.status !== 'pending') || (r.decidedAt || '') > (cur.decidedAt || '')) map.set(r.id, r)
+  }
+  write(K.reviews, [...map.values()])
 }
 
 export function exportCSV() {

@@ -101,7 +101,7 @@ export default function App() {
       </main>
 
       <footer className="foot">
-        ET 617 · {ROLL} · {t({ hi: 'डेटा इसी फ़ोन पर सेव होता है', en: 'Data is saved on this phone' })}
+        ET 617 · {ROLL} · {t({ hi: 'डेटा पहले फ़ोन पर, फिर इंटरनेट मिलने पर सेव होता है', en: 'Saved on the phone first, synced when online' })}
       </footer>
     </div>
   )

@@ -173,3 +173,5 @@ form { display: flex; flex-direction: column; gap: 10px; }
 @media (min-width: 600px) {
   .main, .steps, .foot { padding-left: 48px; }
 }
+.syncbar { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 0.85rem; color: var(--ink-soft); }
+.chip.dark { border-color: var(--ink); color: var(--ink); background: #fff; }

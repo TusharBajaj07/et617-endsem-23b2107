@@ -1,6 +1,8 @@
 import { TASKS } from '../content'
 import { mastery } from '../agents'
+import { useEffect, useState } from 'react'
 import * as store from '../store'
+import * as sync from '../sync'
 
 const LO2 = { yes: { hi: 'पक्का', en: 'Secure' }, partial: { hi: 'शॉर्टकट से, समझ अधूरी', en: 'Shortcut only, not yet explained' }, no: { hi: 'और अभ्यास चाहिए', en: 'Needs practice' }, '-': { hi: 'अभी बाकी', en: 'Not done yet' } }
 const LO3 = { yes: LO2.yes, no: LO2.no, '-': LO2['-'] }
@@ -8,6 +10,17 @@ const LO3 = { yes: LO2.yes, no: LO2.no, '-': LO2['-'] }
 // S5: progress shown as competence per learning outcome, plus misconceptions and teacher messages.
 export default function Summary({ t, session, updateSession, go, learner }) {
   const p = session.progress
+  const [, refresh] = useState(0)
+  useEffect(() => {
+    if (!sync.enabled) return
+    sync
+      .fetchReviews(learner.id)
+      .then((r) => {
+        store.mergeReviews(r)
+        refresh((n) => n + 1)
+      })
+      .catch(() => {})
+  }, [learner.id])
   const m = mastery(p)
   const reviews = store.getReviews().filter((r) => r.learnerId === learner.id)
   const msgs = reviews.filter((r) => r.message)

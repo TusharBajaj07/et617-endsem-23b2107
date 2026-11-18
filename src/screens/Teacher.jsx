@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DISAGREE as D } from '../content'
 import { mastery } from '../agents'
 import * as store from '../store'
+import * as sync from '../sync'
 
 const PIN = '0617'
 
@@ -21,6 +22,24 @@ export default function Teacher({ t }) {
   const [, refresh] = useState(0)
   const [editing, setEditing] = useState(null)
   const [draft, setDraft] = useState('')
+  const [remote, setRemote] = useState({ status: sync.enabled ? 'loading' : 'off', learners: [], events: null })
+
+  async function pull() {
+    if (!sync.enabled) return
+    setRemote((r) => ({ ...r, status: 'loading' }))
+    try {
+      await sync.flush()
+      const [reviews, learners, events] = await Promise.all([sync.fetchReviews(), sync.fetchLearners(), sync.fetchEvents()])
+      store.mergeReviews(reviews)
+      setRemote({ status: 'ok', learners, events: events.reverse(), at: new Date() })
+    } catch {
+      setRemote((r) => ({ ...r, status: 'error' }))
+    }
+  }
+
+  useEffect(() => {
+    if (ok) pull()
+  }, [ok])
 
   if (!ok) {
     return (
@@ -45,12 +64,18 @@ export default function Teacher({ t }) {
     )
   }
 
-  const reviews = store.getReviews().sort((a, b) => (a.status === 'pending') - (b.status === 'pending') || 0).reverse()
-  const learners = store.getLearners()
-  const events = store.getEvents()
+  const reviews = store
+    .getReviews()
+    .sort((a, b) => (b.status === 'pending') - (a.status === 'pending') || String(b.ts).localeCompare(String(a.ts)))
+  // class list: all devices (Supabase) + this phone
+  const byId = new Map(remote.learners.map((l) => [l.id, { id: l.id, name: l.name, progress: l.progress }]))
+  store.getLearners().forEach((l) => byId.set(l.id, { id: l.id, name: l.name, progress: store.loadSession(l.id)?.progress || byId.get(l.id)?.progress }))
+  const learners = [...byId.values()]
+  const events = remote.events || store.getEvents()
 
   function decide(r, decision, message) {
-    store.updateReview(r.id, { status: decision === 'override' ? 'overridden' : 'approved', decision, message })
+    store.updateReview(r.id, { status: decision === 'override' ? 'overridden' : 'approved', decision, message }, r)
+    sync.schedule(200)
     store.logEvent('teacher_review', { target: r.taskId, value: decision, meta: { review: r.id, learner: r.learnerId, kind: r.kind } })
     setEditing(null)
     setDraft('')
@@ -74,6 +99,19 @@ export default function Teacher({ t }) {
   return (
     <section className="sheet">
       <h1 className="sign">{t({ hi: 'शिक्षक की चौपाल', en: "Teacher's chaupal" })}</h1>
+      <div className="syncbar">
+        <span>
+          {remote.status === 'ok' && t({ hi: `☁️ सभी फ़ोन का डेटा: ${learners.length} बच्चे, ${events.length} इवेंट`, en: `☁️ Data from all phones: ${learners.length} learners, ${events.length} events` })}
+          {remote.status === 'loading' && t({ hi: '☁️ डेटा ला रहे हैं…', en: '☁️ Loading data…' })}
+          {remote.status === 'error' && t({ hi: '📴 इंटरनेट नहीं मिला। सिर्फ़ इस फ़ोन का डेटा दिख रहा है।', en: '📴 No connection. Showing this phone only.' })}
+          {remote.status === 'off' && t({ hi: 'सिर्फ़ इस फ़ोन का डेटा', en: 'This phone only' })}
+        </span>
+        {sync.enabled && (
+          <button className="chip dark" onClick={pull}>
+            {t({ hi: 'ताज़ा करो', en: 'Refresh' })}
+          </button>
+        )}
+      </div>
       <div className="tabs">
         {[
           ['queue', { hi: `जाँच की कतार (${reviews.filter((r) => r.status === 'pending').length})`, en: `Review queue (${reviews.filter((r) => r.status === 'pending').length})` }],
@@ -189,7 +227,7 @@ export default function Teacher({ t }) {
                 </tr>
               )}
               {learners.map((l) => {
-                const m = mastery(store.loadSession(l.id)?.progress)
+                const m = mastery(l.progress)
                 return (
                   <tr key={l.id}>
                     <td>{l.name}</td>
