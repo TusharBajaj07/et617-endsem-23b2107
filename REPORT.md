@@ -12,8 +12,8 @@ C5 Teacher-in-the-loop
 *Chaupal* is the village meeting place where people discuss a matter and each person states their view. In the app,
 three AI agents discuss the learner's answer, and **the learner decides**.
 
-> **Language:** the learner sees **Hindi first**, with an English toggle. Hindi is the regional medium of instruction in
-> our assumed setting, rural Madhya Pradesh. The Hindi lines below are the exact text shown in the app; the English
+> **Language:** every screen is in Hindi and English with a one-tap toggle (the app opens in English; the choice is
+> remembered on the phone). Hindi is the regional medium of instruction in our assumed setting, rural Madhya Pradesh. The Hindi lines below are the exact text shown in the app; the English
 > lines (in italics) are translations for evaluators.
 
 ---
@@ -366,6 +366,148 @@ This is a real disagreement, not one agent simply being wrong.
 
 ---
 
-## D4–D8
-*To follow:* D4 (working app), D5 (two learner scenarios with screenshots), D6 (AI specification), D7 (pedagogical
-rationale), D8 (evaluation plan).
+## D6. AI functionality specification
+
+**Where the AI sits.** Code (`check()` in `src/agents.js`) decides whether an answer is right and which misconception
+it matches. The AI never decides correctness. Three AI agents put that decision into words, explain, and challenge.
+All AI calls go through one serverless endpoint, `api/agent.js`, so API keys never reach the phone.
+
+**Model call (all features).**
+- Chain, tried in order within a 10 s server budget: Groq `openai/gpt-oss-120b` (about 1 s) → Groq `openai/gpt-oss-20b`
+  → Gemini `gemini-3.5-flash-lite` (key 1) → the same model (key 2).
+- Groq: `temperature 0.4`, `reasoning_effort "low"`, `max_completion_tokens 600`, `response_format json_object`.
+  Gemini: `temperature 0.4`, `maxOutputTokens 1024`, `responseMimeType application/json`.
+- System prompt = `COMMON` + the agent's role prompt (below). User message = the blackboard JSON:
+
+```json
+{ "task": {"id": "T1", "expr": "−4 + (−3) = ?", "correct": -7},
+  "verdict": "wrong", "misconception_tag": "M2", "attempt": 1, "learner_answer": 7,
+  "blackboard": {"history": [{"task": "T1", "no": 1, "lo": "LO1", "tags": ["M2"], "done": false}, "…"],
+                 "misconceptions": {"M1": 0, "M2": 1}},
+  "reference_line": {"hi": "उत्तर +7 नहीं है। लगता है \"दो माइनस = प्लस\" वाला नियम यहाँ लग गया।", "en": "…"},
+  "conversation": [], "learner_question": null }
+```
+
+**Shared system prompt (`COMMON`):**
+```text
+You are one of three AI agents in "Ganit Chaupal", a maths practice app for a 12-year-old Class 7 student in a rural Hindi-medium government school in India. Topic: adding and subtracting negative integers.
+Agents: Jaanch (evaluator), Samjhao (explainer), Sawaal (challenger). You receive a BLACKBOARD (JSON) written by a code checker and the other agents.
+Rules:
+- The checker's verdict is FINAL. Never contradict it. Never call a wrong answer right.
+- Use only two models: the number line (left/right steps) and "udhaar" (shop credit; a negative number = money owed).
+- At most 2 short sentences. Simple Hindi in Devanagari that a Class 7 Hindi-medium student knows; digits and + − = are fine.
+- Address the learner as "तुम". Avoid gendered verb forms for the learner (prefer "तुमने ..." or impersonal forms).
+- If the verdict is "wrong" and attempt < 2, do NOT state the final answer.
+- Stay consistent with the reference line from the teacher-approved script, but personalise using the learner's attempt and history.
+Return ONLY JSON: {"hi": "<Hindi>", "en": "<English translation>"}
+```
+
+**Added for the three conversational agents (`CONVO`):**
+```text
+You can see the CONVERSATION so far (messages from the other agents and the learner). Respond to it: refer to another agent by name when you build on or disagree with them (e.g. "जाँच ने सही कहा…" / "मैं जाँच से सहमत नहीं…").
+Speak as yourself in the first person; never mention your own name. Never mention "the checker" or "the check"; just state things directly.
+While the learner has not yet answered correctly: never write the final answer, never compute it in words (e.g. "3 more than 5"), and never rewrite the question into an easier sum (e.g. "5 + 3"). Point only at the DIRECTION (left/right) or the udhaar idea and let the learner finish.
+If "learner_question" is present, the learner asked YOU directly: actually answer their "why/what" with the number line or udhaar idea (Samjhao: a short explanation; Sawaal: a short explanation plus one guiding question back). Never give the final answer of the current question.
+Return ONLY JSON: {"hi": "<Hindi>", "en": "<English>", "stance": "agree" | "disagree"}  (stance = do you agree with the previous agent's message; "agree" if there is none)
+```
+
+**Checks before the learner sees any AI line.**
+1. Server (`api/agent.js`): the reply must parse as JSON with string `hi` and `en`, and `hi` must contain Devanagari.
+   Otherwise the next model in the chain is tried.
+2. Phone (`validAI()` in `src/agents.js`):
+   - `hi` and `en` at most 400 characters each;
+   - Jaanch may not call a wrong answer right (an English reply with "correct/right" and no negation is rejected);
+   - while the learner is still trying (verdict not correct, attempt < 2), the reply may not reveal the answer:
+     no "= 7", no bare answer number that is not already in the question, no easier sum that adds up to it
+     ("5 + 3"), and no "3 more than 5" wording;
+   - the free-text score is forced to an integer from 0 to 3.
+3. The phone waits at most 11 s; offline it does not call at all.
+
+**Fallback.** Any failure (offline, timeout, every model fails, a check fails) shows the scripted line written for that
+exact situation in D3, which was written and checked in advance. Each message is logged as `agent_message` with
+`source: ai | scripted` and the model name, so the teacher's Data tab shows the share of AI lines.
+
+### F1. Jaanch (Evaluator): put the verdict into words
+- **Does:** after every answer, says in one sentence whether it is right, exactly as the checker decided, and names
+  the misconception in child-friendly words.
+- **Input:** the blackboard JSON above, conversation empty (Jaanch speaks first). Role prompt:
+```text
+You are JAANCH, the Evaluator. The code checker's verdict and misconception tag are FINAL. Tell the learner, in one sentence, whether the answer is right (exactly as the verdict says), and if wrong name the likely misconception in child-friendly words (M1 = treated subtracting a negative like subtracting a positive; M2 = used "two minuses make a plus" where it does not apply). Do not explain the method; Samjhao or Sawaal will follow. If misconception_tag is "shortcut", the learner's answer is right AND their reason ("two minuses make a plus") does work in this question: say both plainly, e.g. "Your answer is right, and your reason works here."
+```
+- **Output:** `{"hi", "en", "stance"}`. Real reply on the live app for T1 with answer +7 (M2), 2026-11-18, model
+  `openai/gpt-oss-120b`: *"तुम्हारा उत्तर गलत है, क्योंकि तुम दो माइनस को प्लस मान रहे हो जहाँ नहीं होना चाहिए।"*
+  (*"Your answer is wrong because you treated two minuses as a plus where it doesn't apply."*)
+- **Check / fallback:** the checks above; scripted line, e.g. T1-M2 *"उत्तर +7 नहीं है। लगता है "दो माइनस = प्लस" वाला
+  नियम यहाँ लग गया।"*
+
+### F2. Samjhao (Explainer): a nudge targeted at the misconception
+- **Does:** reads Jaanch's message and the tag, then gives one nudge for this item: the udhaar model for M1,
+  number-line direction for M2.
+- **Input:** the same JSON plus `conversation: [Jaanch's message]`. Role prompt:
+```text
+You are SAMJHAO, the Explainer. Jaanch diagnosed the misconception tag on the blackboard:
+M1 = "subtracting always makes it smaller" → use the udhaar model (removing a debt raises your account).
+M2 = "two minuses make a plus everywhere" → use number-line direction (adding a negative moves left).
+"other"/"sign"/"diff" → point at the direction to move. Give a targeted nudge for THIS item, not a lecture.
+```
+- **Output:** `{"hi", "en", "stance"}`; `stance: "disagree"` labels the bubble "🤝 Disagrees with Jaanch".
+- **Check / fallback:** the checks above (the no-answer-reveal rule matters most here); scripted line, e.g. T1-M2
+  *"यहाँ ऋणात्मक संख्या जोड़ी जा रही है, घटाई नहीं जा रही। ₹4 उधार में ₹3 और उधार जुड़ा…"*
+
+### F3. Sawaal (Challenger): one question or counterexample
+- **Does:** after a correct answer (and on T6-M2), asks one "why?" or gives one counterexample, using the blackboard
+  history ("in question 1…").
+- **Input:** the same JSON plus the conversation so far. Role prompt:
+```text
+You are SAWAAL, the Challenger. Ask ONE short "why?" question, or give ONE counterexample or extension that tests whether the learner's reasoning generalises (e.g. does the rule still hold when a negative is ADDED?). If the blackboard history shows an earlier misconception, refer to that question number. Do not answer your own question. If Jaanch accepted a memorised rule, you may challenge Jaanch.
+```
+- **Output / check / fallback:** as F2; scripted line, e.g. T1 correct *"एक सवाल: यहाँ भी दो माइनस थे, फिर भी उत्तर
+  प्लस क्यों नहीं बना?"*
+
+### F4. Learner asks a question ("Explain it to me" / "Or challenge me instead")
+- **Does:** the learner types a question; it goes to Samjhao (main button) or Sawaal (small option) together with
+  the conversation so far, as `learner_question` (max 200 characters).
+- **Check:** the same checks, so the answer to the current question is still not revealed.
+- **Fallback:** Samjhao → the item's first hint; Sawaal → *"अच्छा सवाल! पहले खुद सोचो: दाईं ओर जाना है या बाईं ओर?"*
+  (*"Good question! First think: right or left?"*).
+
+### F5. The disagreement (S4, T5 option B)
+- **Does:** Jaanch (AI) judges the learner's shortcut reason "two minuses make a plus" and accepts it for this
+  question. Its reply is passed to Sawaal with this extra instruction:
+```text
+Jaanch accepted the learner's memorised shortcut. As Sawaal you DISAGREE: explain in one sentence why a memorised rule is risky and name the counterexample −2 + (−5). Set stance to "disagree".
+```
+  The coordinator then shows one "Two views: you decide" card with three choices: test Sawaal's example
+  (−2 + (−5) on the number line, checked by code), keep my reason, or ask my teacher.
+- **Check / fallback:** the checks above; scripted Jaanch and Sawaal lines from D3 Part C. Sawaal's line about
+  an earlier question ("in question N this rule went wrong") is scripted and comes from the blackboard.
+
+### F6. Jaanch scores the learner's own explanation (T5, 0–3)
+- **Does:** scores a free-text explanation of why 5 − (−3) = 8, in Hindi, Hinglish or English, and gives one
+  encouraging next step. Role prompt:
+```text
+You are JAANCH, the Evaluator. Score the learner's free-text explanation of why 5 − (−3) = 8 on a 0–3 rubric:
++1 uses a model (number-line direction or udhaar/debt), +1 says subtracting a negative moves right or increases the value, +1 reaches 8 consistent with the reason.
+The learner may write in Hindi, Hinglish (Roman Hindi) or English. Give ONE encouraging sentence naming what to add next.
+Return ONLY JSON: {"score": <0-3 integer>, "hi": "<Hindi>", "en": "<English>"}
+```
+- **Output:** `{"score", "hi", "en"}`; shown as "… (score 2/3)" with the note "Your teacher will review this and may
+  change it."
+- **Check:** the score is clamped to an integer 0–3; text checks as above.
+- **Fallback:** `rubricFallback()`, a keyword rubric (model word +1, direction/increase word +1, "8" +1) with a fixed
+  tip per score.
+- **Human check (C5):** every free-text score goes to the teacher's review queue, where the teacher approves the AI's
+  feedback or overrides it with their own message, which the learner sees on S5.
+
+### Known limitations
+- The checks catch wrong verdicts and answer leaks, not every weak explanation; the scripted reference line in the
+  prompt and teacher review are the mitigation.
+- The teacher's review card for a disagreement stores the scripted Jaanch and Sawaal lines, not the exact AI text the
+  learner saw.
+- The conversation resets on each submit; memory across questions comes only from the blackboard.
+
+---
+
+## D4, D5, D7, D8
+*To follow:* D4 (working app), D5 (two learner scenarios with screenshots), D7 (pedagogical rationale), D8
+(evaluation plan).
