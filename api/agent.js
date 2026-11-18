@@ -1,13 +1,44 @@
-// Vercel serverless function: one endpoint, three agent roles. The Gemini key never reaches the browser.
-// Fallback chain: flash-lite (key 1) → flash-lite (key 2) → flash (key 1); total budget ~8 s.
+// Vercel serverless function: one endpoint, three agent roles. API keys never reach the browser.
+// Fallback chain: Groq gpt-oss-120b (~1 s) → Groq gpt-oss-20b → Gemini flash-lite (keys 1, 2). Budget ~10 s.
+// Quota care: low reasoning effort, small output cap, only the last 4 conversation turns are sent.
 
 export const config = { maxDuration: 30 }
 
 const CHAIN = [
-  ['gemini-3.5-flash-lite', 'LLM_API_KEY'],
-  ['gemini-3.5-flash-lite', 'LLM_API_KEY_2'],
-  ['gemini-3.8-flash', 'LLM_API_KEY'],
+  ['groq', 'openai/gpt-oss-120b', 'GROQ_API_KEY'],
+  ['groq', 'openai/gpt-oss-20b', 'GROQ_API_KEY'],
+  ['gemini', 'gemini-3.5-flash-lite', 'LLM_API_KEY'],
+  ['gemini', 'gemini-3.5-flash-lite', 'LLM_API_KEY_2'],
 ]
+
+async function callGroq(model, key, system, user, ms) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), ms)
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        response_format: { type: 'json_object' },
+        reasoning_effort: 'low',
+        temperature: 0.4,
+        max_completion_tokens: 600,
+      }),
+    })
+    if (!r.ok) return { error: `HTTP ${r.status}` }
+    const j = await r.json()
+    const text = j.choices?.[0]?.message?.content || ''
+    const m = text.match(/\{[\s\S]*\}/)
+    return m ? { data: JSON.parse(m[0]) } : { error: 'no JSON' }
+  } catch (e) {
+    return { error: e.name === 'AbortError' ? 'timeout' : String(e.message || e) }
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 const COMMON = `You are one of three AI agents in "Ganit Chaupal", a maths practice app for a 12-year-old Class 7 student in a rural Hindi-medium government school in India. Topic: adding and subtracting negative integers.
 Agents: Jaanch (evaluator), Samjhao (explainer), Sawaal (challenger). You receive a BLACKBOARD (JSON) written by a code checker and the other agents.
@@ -75,16 +106,18 @@ export default async function handler(req, res) {
     task: ctx.task, verdict: ctx.verdict, misconception_tag: ctx.tag, attempt: ctx.attempt,
     learner_answer: ctx.learnerAnswer, learner_text: ctx.learnerText, blackboard: ctx.blackboard,
     debate: ctx.debate ? 'Jaanch accepted the learner\'s memorised shortcut. As Sawaal you DISAGREE: explain in one sentence why a memorised rule is risky and name the counterexample −2 + (−5). Set stance to "disagree".' : undefined,
-    reference_line: ctx.scripted, conversation: ctx.conversation || [], learner_question: ctx.learnerQuestion,
+    reference_line: ctx.scripted, conversation: (ctx.conversation || []).slice(-4).map((c) => ({ agent: c.agent, text: String(c.text || '').slice(0, 300) })),
+    learner_question: ctx.learnerQuestion ? String(ctx.learnerQuestion).slice(0, 200) : undefined,
   })
 
   const deadline = Date.now() + 10000
   const errors = []
-  for (const [model, envName] of CHAIN) {
+  for (const [provider, model, envName] of CHAIN) {
     const key = process.env[envName]
     const left = deadline - Date.now()
     if (!key || left < 1500) continue
-    const out = await callGemini(model, key, system, user, Math.min(left, 9000))
+    const call = provider === 'groq' ? callGroq : callGemini
+    const out = await call(model, key, system, user, Math.min(left, provider === 'groq' ? 4000 : 9000))
     const d = out.data
     if (d && typeof d.hi === 'string' && typeof d.en === 'string' && /[ऀ-ॿ]/.test(d.hi)) {
       const score = ctx.agent === 'jaanch_rubric' ? Math.max(0, Math.min(3, parseInt(d.score, 10) || 0)) : undefined
