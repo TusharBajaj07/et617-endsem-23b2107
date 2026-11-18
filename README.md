@@ -1,5 +1,9 @@
 # ET 617 Endsem App
 
+| Roll no. | P | T | L | C |
+|---|---|---|---|---|
+| 23B2107 | P3 Multi-agent collaborative learning environment | P3-T1 Integers: operations with negative numbers (Class 7) | L1 Rural government-school student (Class 6–8), regional-language medium, parent's Android phone ~30 min/evening | C5 Teacher-in-the-loop |
+
 Educational web app built for the ET 617 (IIT Bombay) end-semester hackathon.
 
 - **Live:** https://et617-23b2107.vercel.app

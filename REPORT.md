@@ -1,5 +1,9 @@
 # Ganit Chaupal (गणित चौपाल): Report
 
+| Roll no. | P | T | L | C |
+|---|---|---|---|---|
+| 23B2107 | P3 Multi-agent collaborative learning environment | P3-T1 Integers: operations with negative numbers (Class 7) | L1 Rural government-school student (Class 6–8), regional-language medium, parent's Android phone ~30 min/evening | C5 Teacher-in-the-loop |
+
 **Card:** P3 Multi-agent collaborative learning · T1 Integers: operations with negative numbers (Class 7) ·
 L1 Rural government school, regional-language medium, parent's Android phone for about 30 min in the evening ·
 C5 Teacher-in-the-loop
