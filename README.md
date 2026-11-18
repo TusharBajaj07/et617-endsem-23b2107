@@ -2,7 +2,7 @@
 
 Educational web app built for the ET 617 (IIT Bombay) end-semester hackathon.
 
-- **Live:** _(Vercel URL added after first deploy)_
+- **Live:** https://et617-endsem-ecru.vercel.app
 - **Design rationale:** [DESIGN.md](DESIGN.md)
 - **Development log:** [DEVLOG.md](DEVLOG.md)
 
