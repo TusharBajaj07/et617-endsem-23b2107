@@ -66,13 +66,16 @@ form { display: flex; flex-direction: column; gap: 10px; }
 .seg { display: flex; gap: 8px; align-items: center; }
 .seg button { flex: 1; border-radius: var(--r-md); border: 1.5px solid var(--line); background: var(--surface); font-weight: 600; font-size: 1rem; }
 .seg button.sq { flex: 0 0 56px; font-size: 1.6rem; line-height: 1; }
-/* T2: small +/− stacked on the left, number on the right */
-.signrow { display: flex; gap: 10px; align-items: stretch; }
-.signs { display: flex; flex-direction: column; gap: 6px; flex: 0 0 44px; }
-.signs button { height: 40px; padding: 0; border-radius: var(--r-md); border: 1.5px solid var(--line); background: var(--surface); font-size: 1.4rem; font-weight: 700; line-height: 1; }
-.signs button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
-.signnum { flex: 1; font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.signnum::placeholder { font-size: 1rem; font-weight: 500; }
+/* T2: one compact unit: small +/− stacked on the left, the number on the right */
+.signrow { display: flex; align-items: stretch; width: 100%; max-width: 260px; height: 92px; border: 1.5px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+.signs { display: flex; flex-direction: column; flex: 0 0 52px; border-right: 1.5px solid var(--line); }
+.signs button { flex: 1; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink-soft); font-size: 1.35rem; font-weight: 700; line-height: 1; min-height: 0; }
+.signs button + button { border-top: 1.5px solid var(--line); }
+.signs button.on { background: var(--primary); color: #fff; }
+.signnum { flex: 1; min-width: 0; height: 100%; border: 0; border-radius: 0; background: transparent; text-align: center; font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; padding: 0 8px; }
+.signnum:focus { outline: none; }
+.signrow:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft, rgba(37,64,201,.15)); }
+.signnum::placeholder { font-size: 0.95rem; font-weight: 500; color: var(--ink-faint, #9aa3af); }
 .seg button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
 .preview { font-size: 1.5rem; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
 
