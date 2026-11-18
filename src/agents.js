@@ -1,5 +1,5 @@
 // Multi-agent core: code checker, shared blackboard, AI call with validation + scripted fallback.
-import { TASKS } from './content'
+import { TASKS } from './content.js'
 
 export const fmt = (n) => (n < 0 ? '−' + Math.abs(n) : String(n))
 
@@ -52,6 +52,15 @@ export function validAI(out, ctx) {
     const c = String(Math.abs(ctx.task.correct))
     const re = new RegExp(`=\\s*[−-]?\\s*${c}(?!\\d)`)
     if (re.test(out.hi) || re.test(out.en)) return false
+    // Also block the bare answer number when it is not already in the question (e.g. "you get 8").
+    const inQuestion = new RegExp(`(^|\\D)${c}(?!\\d)`).test(String(ctx.task.expr || ''))
+    const bare = new RegExp(`(^|\\D)${c}(?!\\d)`)
+    if (!inQuestion && (bare.test(out.en) || bare.test(out.hi))) return false
+    // Block rewriting into the easy sum, e.g. "5 + 3".
+    const sums = [...out.en.matchAll(/(\d+)\s*\+\s*(\d+)/g)]
+    if (sums.some((m) => +m[1] + +m[2] === Math.abs(ctx.task.correct))) return false
+    // Block computing it in words: "₹3 more than ₹5".
+    if (/\d+\s*(more|less|bigger|smaller|greater|fewer)\s+than\s*₹?\s*\d+/i.test(out.en)) return false
   }
   return true
 }
