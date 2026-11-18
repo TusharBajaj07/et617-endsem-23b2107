@@ -62,7 +62,7 @@ export default function Practice({ t, session, updateSession, go, learner }) {
 
   async function say(lines, ctx) {
     lastCtx.current = ctx
-    convo.current = [{ agent: 'checker', name: { hi: 'जाँच-मशीन', en: 'Code checker' }, text: ctx.verdict === 'correct' ? 'Answer is correct.' : `Answer is wrong (tag ${ctx.tag}).` }]
+    convo.current = [] // verdict reaches agents via ctx.verdict, not as a chat message
     for (const line of lines) await speak(line.agent, ctx, line.text)
   }
 
