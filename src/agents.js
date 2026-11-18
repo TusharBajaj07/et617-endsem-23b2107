@@ -44,7 +44,8 @@ const hasDevanagari = (s) => /[ऀ-ॿ]/.test(s || '')
 // Output check before the learner sees anything AI-generated.
 export function validAI(out, ctx) {
   if (!out || typeof out.hi !== 'string' || typeof out.en !== 'string') return false
-  if (!hasDevanagari(out.hi) || out.hi.length > 400 || out.en.length > 400) return false
+  const cap = ctx?.learnerQuestion ? 800 : 400 // a learner's own question may get a step-by-step reply
+  if (!hasDevanagari(out.hi) || out.hi.length > cap || out.en.length > cap) return false
   // No answer reveal while the learner is still trying.
   // Jaanch must not call a wrong answer right.
   // After a wrong answer, no agent may say "X is right/correct" (the child reads it as "my answer is right").

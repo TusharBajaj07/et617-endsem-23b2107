@@ -123,6 +123,7 @@ form { display: flex; flex-direction: column; gap: 10px; }
 .chat:empty { display: none; }
 .bubble { padding: 10px 14px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px var(--r-lg) var(--r-lg) var(--r-lg); font-size: 0.97rem; animation: pop 0.2s ease-out; }
 @keyframes pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.bubble > div:not(.who) { white-space: pre-line; }
 .bubble .who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.82rem; margin-bottom: 4px; }
 .bubble .who > span:first-child { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 0.85rem; background: var(--app); }
 .bubble .who small { color: var(--ink-soft); font-size: 0.78rem; }

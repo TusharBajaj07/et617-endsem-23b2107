@@ -415,7 +415,8 @@ Return ONLY JSON: {"hi": "<Hindi>", "en": "<English>", "stance": "agree" | "disa
 1. Server (`api/agent.js`): the reply must parse as JSON with string `hi` and `en`, and `hi` must contain Devanagari.
    Otherwise the next model in the chain is tried.
 2. Phone (`validAI()` in `src/agents.js`):
-   - `hi` and `en` at most 400 characters each;
+   - `hi` and `en` at most 400 characters each (800 when replying to the learner's own question, which gets a
+     step-by-step answer of 3–5 short lines);
    - Jaanch may not call a wrong answer right (an English reply with "correct/right" and no negation is rejected);
    - while the learner is still trying (verdict not correct, attempt < 2), the reply may not reveal the answer:
      no "= 7", no bare answer number that is not already in the question, no easier sum that adds up to it

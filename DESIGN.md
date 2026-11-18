@@ -87,7 +87,8 @@ agents' earlier feedback.
 
 **Conflict policy (answer to the design challenge):**
 1. **R1:** Correctness is never debated; code owns it.
-2. **R2:** One voice at a time, at most 2 bubbles per turn, each at most 2 sentences.
+2. **R2:** One voice at a time, at most 2 bubbles per turn, each at most 2 sentences. Exception: when the learner
+   asks a question, the agent may answer step by step in 3–5 short lines.
 3. **R3:** Disagreement is about the reason only, and appears as one explicit card.
 4. **R4:** The learner chooses between Test, Continue and Ask teacher; no choice is penalised.
 5. **R5:** If unresolved, it goes to the teacher, whose decision is final and shown.
