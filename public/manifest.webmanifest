@@ -3,7 +3,7 @@
   "short_name": "गणित चौपाल",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F7F8F2",
-  "theme_color": "#B8322A",
+  "background_color": "#F5F7FA",
+  "theme_color": "#FFFFFF",
   "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

@@ -12,7 +12,7 @@ import Teacher from './screens/Teacher'
 const freshSession = () => ({ screen: 'S2', cardIdx: 0, taskIdx: 0, order: [0, 1, 2, 3, 4, 5], progress: {} })
 
 export default function App() {
-  const [lang, setLang] = useState(() => store.read('gc_lang', 'hi'))
+  const [lang, setLang] = useState(() => store.read('gc_lang_v2', 'en'))
   const [screen, setScreen] = useState('S1')
   const [learner, setLearner] = useState(null)
   const [session, setSession] = useState(null)
@@ -20,7 +20,7 @@ export default function App() {
   const t = (o) => (o && typeof o === 'object' ? (o[lang] ?? o.hi) : o)
 
   useEffect(() => {
-    store.write('gc_lang', lang)
+    store.write('gc_lang_v2', lang)
     document.documentElement.lang = lang
   }, [lang])
   useEffect(() => {
@@ -65,7 +65,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="top">
-        <div className="brand">गणित चौपाल</div>
+        <div className="brand">{lang === 'hi' ? 'गणित चौपाल' : 'Ganit Chaupal'}</div>
         <div className="token" title="Identity token">
           ID {ROLL} · {screen} {t(SCREENS[screen])}
         </div>

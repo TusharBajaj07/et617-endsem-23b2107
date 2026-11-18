@@ -1,23 +1,42 @@
-/* Tokens. Concept: a school notebook page + the shopkeeper's red bahi-khata ledger. */
+/* Tokens. A calm phone app: plain surfaces, one accent, each agent with its own colour. */
 :root {
-  --paper: #f7f8f2;
-  --rule: #c9d6ea;
-  --ink: #1d2a4a;
-  --ink-soft: #55607a;
-  --ledger: #b8322a;
-  --ledger-deep: #8e231d;
-  --jaanch: #2e7d4f;
-  --samjhao: #2f55a4;
-  --sawaal: #d9930f;
-  --line-h: 30px;
+  --bg: #e8ecf1;          /* outside the phone column (desktop only) */
+  --app: #f5f7fa;         /* app background */
+  --surface: #ffffff;
+  --line: #e1e6ed;
+  --ink: #17202e;
+  --ink-soft: #5d6777;
+  --primary: #2447c9;
+  --primary-soft: #e9eefc;
+  --danger: #c4312b;
+  --danger-soft: #fdecea;
 
-  /* Body: Noto Sans Devanagari ships with Android, so Hindi costs no download on the father's phone. */
-  font-family: 'Noto Sans Devanagari', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 17px;
-  line-height: 1.6;
+  --jaanch: #12805a;   --jaanch-soft: #e6f4ee;
+  --samjhao: #6a47d4;  --samjhao-soft: #f0ebfc;
+  --sawaal: #b05e00;   --sawaal-soft: #fdf1e1;
+  --teacher: #b8325b;  --teacher-soft: #fce9ef;
+
+  /* Legacy names still referenced by older rules */
+  --ledger: var(--danger);
+  --ledger-deep: var(--ink);
+  --rule: var(--line);
+  --paper: var(--app);
+
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+
+  font-family: 'Lexend', 'Noto Sans Devanagari', system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
   color: var(--ink);
-  background: var(--paper);
+  background: var(--bg);
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+html[lang='hi'] {
+  font-family: 'Noto Sans Devanagari', 'Lexend', system-ui, sans-serif;
 }
 
 *,
@@ -29,11 +48,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: var(--paper);
-  /* ruled notebook lines + red margin */
-  background-image:
-    linear-gradient(to right, transparent 22px, rgba(184, 50, 42, 0.35) 22px, rgba(184, 50, 42, 0.35) 23.5px, transparent 23.5px),
-    repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--line-h) - 1px), var(--rule) calc(var(--line-h) - 1px), var(--rule) var(--line-h));
+  background: var(--bg);
 }
 
 button,
@@ -46,6 +61,7 @@ textarea {
 button {
   cursor: pointer;
   min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:disabled {
@@ -53,7 +69,7 @@ button:disabled {
 }
 
 :focus-visible {
-  outline: 3px solid var(--samjhao);
+  outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
 
